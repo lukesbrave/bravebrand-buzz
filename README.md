@@ -6,6 +6,8 @@ From this branch, build the local Mac app with:
 
 ```sh
 bin/just desktop-bundle --config src-tauri/tauri.bravebrand-pilot.conf.json
+codesign --force --sign - --timestamp=none "target/debug/bundle/macos/BraveBrand Buzz Pilot.app"
+codesign --verify --deep --strict "target/debug/bundle/macos/BraveBrand Buzz Pilot.app"
 ```
 
 Open `target/debug/bundle/macos/BraveBrand Buzz Pilot.app`. The desktop community join screen requires an HTTPS address with trusted TLS. Once you have joined your community, choose Claude in agent setup and check the account shown before starting a conversation. Import Simon from your own BraveBrand agent card.
