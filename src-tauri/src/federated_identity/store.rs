@@ -6,7 +6,9 @@ use zeroize::{Zeroize, Zeroizing};
 /// Not keyed by app identifier: like the human key, every Buzz copy of this
 /// flavour shares each server's session per profile, and Sign out of Buzz
 /// erases them all.
-pub(crate) const SERVICE: &str = if cfg!(debug_assertions) {
+pub(crate) const SERVICE: &str = if buzz_credential_store::BRAVEBRAND_CLIENT {
+    buzz_credential_store::SESSION_SERVICE_PREFIX
+} else if cfg!(debug_assertions) {
     "xyz.block.buzz.desktop.federated-session.debug"
 } else {
     "xyz.block.buzz.desktop.federated-session"

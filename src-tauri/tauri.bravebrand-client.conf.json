@@ -1,0 +1,15 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "identifier": "com.bravebrand.buzz.client",
+  "productName": "BraveBrand",
+  "build": {
+    "features": ["bravebrand-client"]
+  },
+  "plugins": {
+    "deep-link": {
+      "desktop": {
+        "schemes": ["bravebrand"]
+      }
+    }
+  }
+}

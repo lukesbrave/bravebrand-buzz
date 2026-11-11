@@ -288,6 +288,15 @@ fn home_child() {
 }
 #[test]
 fn human_identity_slots_stay_separate() {
+    if BRAVEBRAND_CLIENT {
+        assert_eq!(HUMAN_SERVICE, "com.bravebrand.buzz.client.identity");
+        assert_eq!(
+            PREVIOUS_HUMAN_SERVICE,
+            "com.bravebrand.buzz.client.identity-store"
+        );
+        assert_eq!(HUMAN_STORE, PREVIOUS_HUMAN_SERVICE);
+        return;
+    }
     assert_eq!(HUMAN_ACCOUNT, "human");
     assert_eq!(human_service(true), "xyz.block.buzz.desktop.identity.debug");
     assert_eq!(human_service(false), "xyz.block.buzz.desktop.identity");
@@ -402,8 +411,8 @@ fn a_me_build_reads_the_release_key_and_falls_back_only_when_it_is_absent() {
     fn run(release: bool, current: Result<&[u8]>, previous: Result<&[u8]>) -> Result<Vec<u8>> {
         let read = |service: &str| {
             match service {
-                "xyz.block.buzz.desktop.identity" => current,
-                "dev.local.buzz.foundation.identity" => previous,
+                service if service == human_service(false) => current,
+                service if service == human_store(false) => previous,
                 _ => panic!("only release services are read: {service}"),
             }
             .map(|value| Zeroizing::new(value.to_vec()))

@@ -12,7 +12,11 @@ import type { Identity } from "./service";
  * a sign-in is pending. Only the click reads old Buzz's secure storage, so any
  * OS prompt follows it. A successful import lifts the gate with no setup.
  */
-export function useLegacyIdentityOffer(identity: Identity, open: boolean) {
+export function useLegacyIdentityOffer(
+  identity: Identity,
+  open: boolean,
+  enabled = true,
+) {
   const state = useSyncExternalStore(identity.subscribe, identity.snapshot);
   const missing = state.status === "missing";
   // Old Buzz's data folder is here, and the offer has not been dismissed.
@@ -21,7 +25,7 @@ export function useLegacyIdentityOffer(identity: Identity, open: boolean) {
   const [tried, setTried] = useState(false);
   const proceed = useRef<HTMLButtonElement>(null);
   useEffect(() => {
-    if (!missing) return;
+    if (!enabled || !missing) return;
     let active = true;
     void identity
       .legacyAvailable()
@@ -30,7 +34,7 @@ export function useLegacyIdentityOffer(identity: Identity, open: boolean) {
     return () => {
       active = false;
     };
-  }, [identity, missing]);
+  }, [identity, missing, enabled]);
   if (!open || !offered || state.status !== "missing") return null;
   const dismiss = () => setOffered(false);
   return (

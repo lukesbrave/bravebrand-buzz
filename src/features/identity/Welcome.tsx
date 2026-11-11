@@ -149,6 +149,7 @@ export function Welcome({
       federatedIdentity as FirstRunIdentity,
     ),
   servers = signInServers,
+  selfHosted = import.meta.env.VITE_BRAVEBRAND_SELF_HOSTED === "true",
 }: {
   identity: Identity;
   /**
@@ -183,6 +184,7 @@ export function Welcome({
     | undefined;
   /** The build's sign-in servers, for whether its Builderlab hosts a URL. */
   servers?: () => Promise<readonly SessionSnapshot[]>;
+  selfHosted?: boolean;
 }) {
   const state = useSyncExternalStore(identity.subscribe, identity.snapshot);
   // Whether the next sign-in opens the sign-up screen: set by the landing's
@@ -416,6 +418,7 @@ export function Welcome({
     // Builderlab setup uses old Buzz's identity by itself, so only the
     // self-hosted route, behind Other options, offers it.
     otherOptions && !keyLanding && auth.status !== "pending",
+    !selfHosted,
   );
   /**
    * Signs this device's key out, which restarts Buzz; the next launch signs in
@@ -944,6 +947,11 @@ export function Welcome({
         return finding ? (
           <ConnectChoice
             host={new URL(finding).host}
+            onCreate={
+              selfHosted
+                ? () => void setup.start([createKey(identity)])
+                : undefined
+            }
             onConnect={() => {
               setup.reset();
               void signIn();
@@ -977,7 +985,7 @@ export function Welcome({
             onBack={() => {
               // Without a Builderlab sign-in, the found community led straight
               // here, so there is no connect choice to return to.
-              if (!current && !connect) return backToLanding();
+              if (!current && !connect && !selfHosted) return backToLanding();
               back(!current ? "connect-choice" : "welcome-back", "import");
             }}
             onImport={async (nsec) => {
@@ -1157,7 +1165,7 @@ export function Welcome({
     auth.status !== "pending" &&
     !auth.error &&
     !discovering &&
-    otherOptions
+    (otherOptions || (selfHosted && !keyLanding))
   )
     return (
       <OnboardingScreen
@@ -1171,10 +1179,12 @@ export function Welcome({
               ref={focusCommunityHeading}
               className="text-heading text-standard"
             >
-              Join a community
+              {selfHosted ? "Connect to your VPS" : "Join a community"}
             </h1>
             <p className="text-body-sm text-subtle">
-              Enter a community address or an invite link to continue.
+              {selfHosted
+                ? "Enter the HTTPS address or invite link for your community."
+                : "Enter a community address or an invite link to continue."}
             </p>
           </>
         }
@@ -1183,11 +1193,14 @@ export function Welcome({
           url={entered}
           onUrlChange={setEntered}
           onSubmit={find}
-          onBack={() =>
-            onboardingTransition(() => {
-              returningFromOptions.current = true;
-              setOtherOptions(false);
-            }, true)
+          onBack={
+            selfHosted
+              ? undefined
+              : () =>
+                  onboardingTransition(() => {
+                    returningFromOptions.current = true;
+                    setOtherOptions(false);
+                  }, true)
           }
         />
         {legacyOffer}
@@ -1425,6 +1438,10 @@ export function Welcome({
           onFound={(found) => {
             // Fenced to this lookup: Cancel, another destination or unmount
             // starts a new one, and a late answer then does nothing.
+            if (selfHosted) {
+              pause("connect-choice");
+              return;
+            }
             const lookup = ++lookups.current;
             void hostedByThisBuilderlab(found, servers).then((hosted) => {
               if (lookup !== lookups.current) return;

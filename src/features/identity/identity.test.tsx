@@ -2167,6 +2167,38 @@ it.each([
   },
 );
 
+it("creates a local identity for the client's VPS without a Builderlab session or legacy lookup", async () => {
+  const relay = landingRelay();
+  const identity = createIdentity();
+  const user = userEvent.setup();
+  const connect = vi.fn();
+  render(
+    <Welcome
+      selfHosted
+      identity={identity}
+      communities={noJoin}
+      invites={invites}
+      connect={connect}
+    >
+      <p>Signed in</p>
+    </Welcome>,
+  );
+  await screen.findByRole("heading", { name: "Connect to your VPS" });
+  await user.type(screen.getByRole("textbox"), "relay.example.com:8443{Enter}");
+  await act(async () => relay.info.resolve());
+  await user.click(
+    await screen.findByRole("button", { name: "Create my identity" }),
+  );
+  await waitFor(() =>
+    expect(invoke).toHaveBeenCalledWith("identity_create", {}),
+  );
+  expect(connect).not.toHaveBeenCalled();
+  expect(
+    vi.mocked(invoke).mock.calls.map(([command]) => command),
+  ).not.toContain("identity_legacy_available");
+  identity.dispose();
+});
+
 it("a build with no Builderlab sign-in sends a found community to Enter your private key, and Back returns to the landing with the address kept", async () => {
   const relay = landingRelay();
   const identity = createIdentity();

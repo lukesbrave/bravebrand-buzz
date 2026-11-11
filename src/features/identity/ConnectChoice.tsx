@@ -13,6 +13,7 @@ import { Button } from "../../shared/design-system/ui/Button";
 export function ConnectChoice({
   host,
   onConnect,
+  onCreate,
   onImport,
   onBack,
 }: {
@@ -20,6 +21,7 @@ export function ConnectChoice({
   host: string;
   /** Sign in at the build portal and continue as the landing’s Sign in with Builderlab does. */
   onConnect: () => void;
+  onCreate?: (() => void) | undefined;
   /** The user already has a key: open the import page. */
   onImport: () => void;
   /** Return to the landing with the address kept. */
@@ -33,11 +35,12 @@ export function ConnectChoice({
           tabIndex={-1}
           className="text-heading text-standard"
         >
-          Connect to your community
+          {onCreate ? "Set up your identity" : "Connect to your community"}
         </h1>
         <p className="mt-2 text-body text-subtle">
-          Sign in to your Builderlab account with email, or use an existing
-          private key to continue.
+          {onCreate
+            ? "Your private key stays on this device. After joining, save a recovery copy from Settings → Identity."
+            : "Sign in to your Builderlab account with email, or use an existing private key to continue."}
         </p>
       </div>
       <div
@@ -53,8 +56,8 @@ export function ConnectChoice({
         </span>
       </div>
       <div className="flex flex-col gap-2">
-        <Button variant="prominent" size="lg" onClick={onConnect}>
-          Sign in with Builderlab
+        <Button variant="prominent" size="lg" onClick={onCreate ?? onConnect}>
+          {onCreate ? "Create my identity" : "Sign in with Builderlab"}
         </Button>
         <Button size="lg" data-return-focus="import" onClick={onImport}>
           Use an existing key

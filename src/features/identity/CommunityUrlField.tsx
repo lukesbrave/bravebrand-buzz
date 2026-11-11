@@ -43,7 +43,7 @@ export function CommunityUrlField({
   /** Receives the canonical secure origin, and an invite link's code ("" for an address). */
   onSubmit: (origin: string, code: string) => void;
   disabled?: boolean;
-  onBack?: () => void;
+  onBack?: (() => void) | undefined;
   /** Continue fills the width right under the field, for a card whose only step this is. */
   stacked?: boolean;
 }) {

@@ -25,6 +25,13 @@ pub fn dev_item(
         .map(|helper| dev_helper::item(&helper, operation, service, account, value))
 }
 
+pub const BRAVEBRAND_CLIENT: bool = cfg!(feature = "bravebrand-client");
+pub const SESSION_SERVICE_PREFIX: &str = if BRAVEBRAND_CLIENT {
+    "com.bravebrand.buzz.client.federated-session"
+} else {
+    "xyz.block.buzz.desktop.federated-session"
+};
+
 pub const HUMAN_ACCOUNT: &str = "human";
 pub const HUMAN_SERVICE: &str = human_service(cfg!(debug_assertions));
 /// The human key's service before 1.0, which reads copy from.
@@ -35,7 +42,9 @@ pub const PREVIOUS_HUMAN_SERVICE: &str = human_store(cfg!(debug_assertions));
 pub const HUMAN_STORE: &str = human_store(cfg!(debug_assertions));
 
 pub const fn human_service(debug: bool) -> &'static str {
-    if debug {
+    if BRAVEBRAND_CLIENT {
+        "com.bravebrand.buzz.client.identity"
+    } else if debug {
         "xyz.block.buzz.desktop.identity.debug"
     } else {
         "xyz.block.buzz.desktop.identity"
@@ -43,7 +52,9 @@ pub const fn human_service(debug: bool) -> &'static str {
 }
 
 pub const fn human_store(debug: bool) -> &'static str {
-    if debug {
+    if BRAVEBRAND_CLIENT {
+        "com.bravebrand.buzz.client.identity-store"
+    } else if debug {
         "dev.local.buzz.foundation.identity.debug"
     } else {
         "dev.local.buzz.foundation.identity"
@@ -470,7 +481,7 @@ mod tests;
 /// Erase an indexed session without reading its contents or knowing its schema.
 #[cfg(not(test))]
 pub fn delete_session(service: &str, account: &str) -> Result<()> {
-    if !service.starts_with("xyz.block.buzz.desktop.federated-session") {
+    if !service.starts_with(SESSION_SERVICE_PREFIX) {
         return Err(Error::Denied);
     }
     let _lock = acquire(&lock_root()?, service, account)?;
@@ -496,7 +507,7 @@ pub fn compare_session(
     expected: Option<&[u8]>,
     replacement: Option<&[u8]>,
 ) -> Result<()> {
-    if !service.starts_with("xyz.block.buzz.desktop.federated-session") {
+    if !service.starts_with(SESSION_SERVICE_PREFIX) {
         return Err(Error::Denied);
     }
     let _lock = acquire(&lock_root()?, service, account)?;

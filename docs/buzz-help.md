@@ -4,6 +4,10 @@ Use this guide when helping someone use Buzz. Explain in their terms, not
 implementation details. This is an overview, not a complete feature list. Use
 current app context and available tools to check anything it does not cover.
 
+## BraveBrand self-hosted client
+
+Enter your VPS community address at first launch. Choose **Create my identity** or bring an existing key. Your relay administrator controls admission. Save a recovery copy in **Settings → Identity**.
+
 ## Start with useful work
 
 Buzz is an open-source app for thinking, asking questions, and getting work done

@@ -5,6 +5,9 @@ license = "Apache-2.0"
 edition = "2021"
 rust-version = "1.89"
 
+[features]
+bravebrand-client = []
+
 [dependencies]
 keyring = { version = "=3.6.3", default-features = false }
 sha2 = "0.10"
