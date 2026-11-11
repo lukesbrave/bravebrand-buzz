@@ -1,4 +1,16 @@
-# Buzz
+# BraveBrand Buzz pilot
+
+This Mac pilot includes the Claude Code account sign-in from upstream [pull request 2995](https://github.com/block/buzz-app/pull/2995), pinned at `23a7fbdbc`. The client uses the account the owner signs into through Claude Code. The pilot build has its own app identifier and URL scheme.
+
+From this branch, build the local Mac app with:
+
+```sh
+bin/just desktop-bundle --config src-tauri/tauri.bravebrand-pilot.conf.json
+```
+
+Open `target/debug/bundle/macos/BraveBrand Buzz Pilot.app`. The desktop community join screen requires an HTTPS address with trusted TLS. Once you have joined your community, choose Claude in agent setup and check the account shown before starting a conversation. Import Simon from your own BraveBrand agent card.
+
+## Upstream Buzz
 
 Your people, your agents, your projects — all in one place. Buzz is a desktop
 app for team chat and AI agents: join a community, talk in channels and direct
