@@ -2,6 +2,12 @@ import type { PluginModule } from "../../plugins/api";
 import { registerAttention } from "../../features/agents/attention-command";
 import { registerDiscovery } from "../../features/agents/attention-discovery";
 import { registerDecideTool } from "../../features/decisions/agent-tool";
+import { AgentCreateDialog } from "./AgentCreateDialog";
+import { AgentSaveButton } from "../../features/agents/AgentSaveButton";
+import { AgentInstructions } from "../../features/agents/AgentInstructions";
+import { ModelFamilyMenu } from "../../features/agents/ModelFamilyMenu";
+import { SettingsGroup } from "../../shared/design-system/ui/SettingsGroup";
+import { Button } from "../../shared/design-system/ui/Button";
 import { AgentsPage } from "./AgentsPage";
 import { AgentCardAttachment, isAgentCard } from "./AgentCardAttachment";
 import {
@@ -19,6 +25,22 @@ import { externalMcpEnabled } from "../../features/agents/external-connection";
 import { forgetMemoryListingsOnSelection } from "../../features/agents/memory";
 import inlineStyles from "../../shared/InlineReference.module.css";
 
+// The private hiring plugin renders these inside the same React tree as Agents.
+const agentControls = {
+  AgentCreateDialog,
+  AgentInstructions,
+  AgentSaveButton,
+  Button,
+  ModelFamilyMenu,
+  SettingsGroup,
+};
+
+declare module "@deepseek-ai/cordis" {
+  interface Context {
+    bravebrandAgentControls: typeof agentControls;
+  }
+}
+
 export const inject = [
   "pages",
   "agents",
@@ -32,6 +54,8 @@ export const inject = [
   "externalApps",
 ];
 export const apply: PluginModule["apply"] = (ctx) => {
+  if (import.meta.env.VITE_BRAVEBRAND_SELF_HOSTED === "true")
+    ctx.provide("bravebrandAgentControls", agentControls);
   registerAttention(ctx);
   registerDiscovery(ctx.agents);
   registerDecideTool(ctx.agents, ctx.decisions);
