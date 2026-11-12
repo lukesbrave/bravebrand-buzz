@@ -50,6 +50,7 @@ import type { SharedAgent } from "../../features/agents/shared-agents";
 import { AgentCard, AgentPortrait, TeamCard } from "./AgentCard";
 import { AgentInventoryDrag, DraggableAgentRow } from "./AgentInventoryDrag";
 import { useAgentOrder } from "./agent-order";
+import { AgentSetupError } from "./AgentSetupError";
 import { AgentCreateDialog, TypeIcon } from "./AgentCreateDialog";
 import { NewAgentTile } from "./NewAgentTile";
 import type { ChannelChoice } from "../../features/agents/attention";
@@ -1633,9 +1634,12 @@ function AgentPeek({
             Finish setup
           </Button>
           {error && (
-            <p role="alert" className="m-0 text-body-sm text-danger">
-              {error}
-            </p>
+            <AgentSetupError
+              key={error}
+              message={error}
+              name={agent.name}
+              type={agent.type}
+            />
           )}
           <AgentDelete agents={agents} agent={agent} onRemoved={onRemoved} />
           {agent.place === "here" && (

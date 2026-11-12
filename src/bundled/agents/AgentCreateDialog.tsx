@@ -25,6 +25,7 @@ import { Field } from "../../shared/design-system/ui/Field";
 import { Input } from "../../shared/design-system/ui/Input";
 import { useNamePrompt, useShake } from "./useNamePrompt";
 import { MigrationPreview } from "./AgentSettingsHost";
+import { AgentSetupError } from "./AgentSetupError";
 import { RemoteAgentIntroduction } from "./RemoteAgentIntroduction";
 
 const message = (error: unknown) =>
@@ -285,14 +286,13 @@ export function AgentCreateDialog({
     />
   );
   const errorMessage = error && (
-    <p
+    <AgentSetupError
       key={error}
-      ref={reveal}
-      role="alert"
-      className="m-0 text-body-sm text-danger"
-    >
-      {error}
-    </p>
+      message={error}
+      name={name.trim()}
+      type={type?.key}
+      reveal={reveal}
+    />
   );
   return (
     <Dialog

@@ -940,6 +940,39 @@ it("groups remote and local harnesses without an inline execution hint", async (
   expect(within(dialog).queryByRole("note")).not.toBeInTheDocument();
 });
 
+it("offers the VPS sign-in command for this agent and reveals it only if copy fails", async () => {
+  const key = "a".repeat(64);
+  const command = "/opt/bravebrand/buzz-pilot/hires/sign-in " + key;
+  const type = { ...remoteEcho, key: "bravebrand.hire/vps-claude" };
+  const { dialog, user } = setup([type], async () => {
+    throw new Error(
+      "Claude did not start. For a new agent, sign in on the VPS with " +
+        command +
+        ", then finish setup in the app.",
+    );
+  });
+  await user.type(within(dialog).getByLabelText("Name"), "Tookie");
+  await user.click(createButton());
+  await user.click(screen.getByRole("button", { name: "Let’s go" }));
+  expect(await screen.findByRole("alert")).toHaveTextContent(
+    "Sign in to Claude on your VPS to finish setting up Tookie.",
+  );
+  expect(dialog).not.toHaveTextContent(key);
+  const copy = screen.getByRole("button", { name: "Copy sign-in command" });
+  const clipboard = vi.spyOn(navigator.clipboard, "writeText");
+  try {
+    clipboard.mockRejectedValueOnce(new Error("Clipboard unavailable"));
+    await user.click(copy);
+    expect(await screen.findByText(command)).toBeVisible();
+    await user.click(copy);
+    expect(await screen.findByRole("button", { name: "Copied" })).toBeVisible();
+    expect(await navigator.clipboard.readText()).toBe(command);
+    expect(dialog).not.toHaveTextContent(key);
+  } finally {
+    clipboard.mockRestore();
+  }
+});
+
 it("introduces remote creation with the chosen avatar and preserves the draft on Back and Escape", async () => {
   motion.reduced = true;
   let finish = (_agent: Agent) => {};
