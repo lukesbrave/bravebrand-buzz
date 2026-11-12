@@ -442,7 +442,7 @@ pub fn bundled_manifests() -> Vec<Manifest> {
             ..HostGrants::default()
         }
     });
-    vec![
+    let mut manifests = vec![
         serde_json::from_str(include_str!(
             "../../../src/bundled/mesh-compute/manifest.json"
         ))
@@ -532,7 +532,18 @@ pub fn bundled_manifests() -> Vec<Manifest> {
         .expect("plugin development manifest"),
         serde_json::from_str(include_str!("../../../src/bundled/focus/manifest.json"))
             .expect("focus manifest"),
-    ]
+    ];
+    if buzz_credential_store::BRAVEBRAND_CLIENT {
+        manifests.retain(|manifest| manifest.id != "block.builderlab");
+        for manifest in &mut manifests {
+            if manifest.id == "buzz.pairing" {
+                if let Some(discovery) = &mut manifest.discovery {
+                    discovery.tags = vec!["Essentials".into()];
+                }
+            }
+        }
+    }
+    manifests
 }
 /// New bundles must opt in to the default-on policy.
 fn enabled_by_default(id: &str) -> bool {
@@ -1716,7 +1727,11 @@ mod tests {
             }
         }
         let mut expected = BTreeMap::new();
-        for entry in index.split("manifest: { ...").skip(1) {
+        for entry in index
+            .split("manifest: {")
+            .skip(1)
+            .filter_map(|entry| entry.trim_start().strip_prefix("..."))
+        {
             let name = entry.split(',').next().unwrap();
             let default = entry
                 .split("enabledByDefault: ")
@@ -1726,7 +1741,9 @@ mod tests {
             let manifest =
                 fs::read_to_string(format!("{root}/{}/manifest.json", dirs[name])).unwrap();
             let manifest: Manifest = serde_json::from_str(&manifest).unwrap();
-            expected.insert(manifest.id, default);
+            if !(buzz_credential_store::BRAVEBRAND_CLIENT && manifest.id == "block.builderlab") {
+                expected.insert(manifest.id, default);
+            }
         }
         let native: BTreeMap<String, bool> = bundled_manifests()
             .into_iter()
