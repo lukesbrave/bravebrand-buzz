@@ -80,6 +80,7 @@ mod repositories_folder;
 mod window_controls;
 mod window_state;
 mod workspace_folder;
+mod workrooms_address;
 use legacy_communities::legacy_communities;
 use os_idle::get_os_idle_seconds;
 use repositories_folder::repositories_folder_validate;
@@ -772,6 +773,7 @@ fn commands<R: tauri::Runtime>() -> impl Fn(tauri::ipc::Invoke<R>) -> bool + Sen
         system_clock::system_hour_cycle,
         workspace_pick_folder,
         repositories_folder_validate,
+        workrooms_address::workrooms_address_setup,
         legacy_communities,
         plugin_import_folder,
         plugin_update_check,

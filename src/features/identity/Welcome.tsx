@@ -54,6 +54,7 @@ import {
   type OwnedCommunity,
   seededAccount,
 } from "./builderlab-account";
+import { ManagedAddress } from "./ManagedAddress";
 import { CommunityUrlField } from "./CommunityUrlField";
 import { ConnectChoice } from "./ConnectChoice";
 import { CreateCommunityStep } from "./CreateCommunityStep";
@@ -1155,6 +1156,24 @@ export function Welcome({
         {null}
       </OnboardingScreen>
     );
+  const managedSetup =
+    selfHosted && import.meta.env.VITE_BRAVEBRAND_MANAGED_ADDRESS === "true";
+  const communityField = (
+    <CommunityUrlField
+      url={entered}
+      onUrlChange={setEntered}
+      onSubmit={find}
+      onBack={
+        selfHosted
+          ? undefined
+          : () =>
+              onboardingTransition(() => {
+                returningFromOptions.current = true;
+                setOtherOptions(false);
+              }, true)
+      }
+    />
+  );
   // Discovery: the same unauthenticated lookup Join Community runs after
   // setup, so a bad address fails here, before sign-in and before a key
   // exists. A community hosted by this build's Builderlab signs in at once;
@@ -1183,26 +1202,26 @@ export function Welcome({
             </h1>
             <p className="text-body-sm text-subtle">
               {selfHosted
-                ? "Enter the HTTPS address or invite link for your community."
+                ? managedSetup
+                  ? "Connect to your community or set up a fresh VPS."
+                  : "Enter the HTTPS address or invite link for your community."
                 : "Enter a community address or an invite link to continue."}
             </p>
           </>
         }
       >
-        <CommunityUrlField
-          url={entered}
-          onUrlChange={setEntered}
-          onSubmit={find}
-          onBack={
-            selfHosted
-              ? undefined
-              : () =>
-                  onboardingTransition(() => {
-                    returningFromOptions.current = true;
-                    setOtherOptions(false);
-                  }, true)
-          }
-        />
+        {managedSetup ? (
+          <ManagedAddress
+            onReady={(url) => {
+              setEntered(url);
+              find(url);
+            }}
+          >
+            {communityField}
+          </ManagedAddress>
+        ) : (
+          communityField
+        )}
         {legacyOffer}
       </OnboardingScreen>
     );

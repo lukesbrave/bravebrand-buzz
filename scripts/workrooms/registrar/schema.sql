@@ -1,0 +1,5 @@
+CREATE TABLE IF NOT EXISTS workrooms (
+  slug TEXT PRIMARY KEY,
+  ip TEXT NOT NULL UNIQUE,
+  owner_hash TEXT NOT NULL
+);

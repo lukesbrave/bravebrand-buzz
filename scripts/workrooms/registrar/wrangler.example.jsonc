@@ -1,0 +1,10 @@
+{
+  "name": "workrooms-addresses",
+  "main": "worker.mjs",
+  "compatibility_date": "2026-11-01",
+  "workers_dev": false,
+  "preview_urls": false,
+  "routes": [{ "pattern": "workrooms-setup.bravebrand.com", "custom_domain": true }],
+  "vars": { "ZONE_ID": "REPLACE_WITH_ZONE_ID" },
+  "d1_databases": [{ "binding": "DB", "database_name": "workrooms-addresses", "database_id": "REPLACE_WITH_DATABASE_ID" }]
+}

@@ -1285,3 +1285,5 @@ Owning the agent does not grant permission to edit or run its workflow.
 ## Workflows in archived channels
 
 In **Workflows**, an archived channel’s group says **Archived**, as do its workflows under **Recently updated**. Their runs would fail, so **Run now** and turning a workflow on are unavailable, and the editor saves a workflow only while it’s off. You can still turn an enabled workflow off, from its row or the editor, or delete it. **New workflow** doesn’t offer archived channels.
+
+In the Brave Agent Workrooms Mac rehearsal, **Set up a VPS without a domain** connects a fresh Ubuntu VPS to a managed workspace address. Enter its IPv4 and a workspace name, choose the SSH key used for that server, and follow Terminal. Workrooms checks HTTPS before opening identity setup. Existing communities and employee invites use the address or invite field.

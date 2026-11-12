@@ -24,6 +24,7 @@
     "allow-identity-import-legacy",
     "allow-identity-create",
     "allow-onboarding-preserve-window",
+    "allow-workrooms-address-setup",
     "allow-identity-export",
     "allow-nsec-backup-available",
     "allow-nsec-backup-confirmed",

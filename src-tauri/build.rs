@@ -157,6 +157,7 @@ fn main() {
             "system_hour_cycle",
             "workspace_pick_folder",
             "repositories_folder_validate",
+            "workrooms_address_setup",
             "legacy_communities",
             "plugin_import_folder",
             "plugin_update_check",

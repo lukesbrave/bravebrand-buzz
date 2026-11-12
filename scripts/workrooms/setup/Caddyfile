@@ -1,0 +1,17 @@
+{
+	admin off
+}
+
+{$COMMUNITY_HOST} {
+	handle /pair {
+		reverse_proxy 127.0.0.1:18448
+	}
+	# Operator and diagnostic routes are private to the existing SSH tunnel.
+	@private path /admin /admin/* /api/admin /api/admin/* /api/v1/admin /api/v1/admin/* /operator /operator/* /metrics /health /_readiness /_liveness /_mesh/* /debug /debug/*
+	handle @private {
+		respond 404
+	}
+	handle {
+		reverse_proxy 127.0.0.1:18447
+	}
+}
