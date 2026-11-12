@@ -167,7 +167,8 @@ export function agentSections({
     });
   if (
     import.meta.env.VITE_BRAVEBRAND_SELF_HOSTED === "true" &&
-    type?.key === "bravebrand.hire/vps-claude" &&
+    (type?.key === "bravebrand.hire/vps-claude" ||
+      type?.key === "bravebrand.hire/vps-goose") &&
     type.remote &&
     !typeTabs.some((tab) => tab.role === "activity")
   ) {
