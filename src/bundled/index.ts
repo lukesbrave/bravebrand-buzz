@@ -84,6 +84,8 @@ const claudeHarness: BundledPlugin = {
   enabledByDefault: true,
 };
 
+const selfHosted = import.meta.env.VITE_BRAVEBRAND_SELF_HOSTED === "true";
+
 export const bundledPlugins: readonly BundledPlugin[] = [
   {
     manifest: { ...meshManifest, apiVersion: 1 },
@@ -106,11 +108,15 @@ export const bundledPlugins: readonly BundledPlugin[] = [
     module: voiceNotes,
     enabledByDefault: true,
   },
-  {
-    manifest: { ...builderlabManifest, apiVersion: 1 },
-    module: builderlab,
-    enabledByDefault: true,
-  },
+  ...(selfHosted
+    ? []
+    : [
+        {
+          manifest: { ...builderlabManifest, apiVersion: 1 as const },
+          module: builderlab,
+          enabledByDefault: true,
+        },
+      ]),
   {
     manifest: { ...draftsSentManifest, apiVersion: 1 },
     module: draftsSent,
@@ -118,7 +124,13 @@ export const bundledPlugins: readonly BundledPlugin[] = [
     enabledByDefault: false,
   },
   {
-    manifest: { ...pairingManifest, apiVersion: 1 },
+    manifest: {
+      ...pairingManifest,
+      apiVersion: 1,
+      discovery: selfHosted
+        ? { ...pairingManifest.discovery, tags: ["Essentials"] }
+        : pairingManifest.discovery,
+    },
     module: pairing,
     enabledByDefault: true,
   },

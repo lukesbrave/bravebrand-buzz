@@ -1,6 +1,14 @@
 import { expect, it } from "vitest";
 import { bundledPlugins } from ".";
 
+it("offers Builderlab only in builds with hosted providers", () => {
+  const ids = bundledPlugins.map(({ manifest }) => manifest.id);
+  expect(ids.includes("block.builderlab")).toBe(
+    import.meta.env.VITE_BRAVEBRAND_SELF_HOSTED !== "true",
+  );
+  expect(ids).toContain("buzz.claude-code");
+});
+
 it("keeps built-in conversation features out of the optional catalog", () => {
   const ids = bundledPlugins.map(({ manifest }) => manifest.id);
   expect(ids).not.toContain("buzz.emoji");
