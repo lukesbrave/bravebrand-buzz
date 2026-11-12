@@ -25,8 +25,11 @@ pub fn dev_item(
         .map(|helper| dev_helper::item(&helper, operation, service, account, value))
 }
 
+pub const BRAVEBRAND_REHEARSAL: bool = cfg!(feature = "bravebrand-rehearsal");
 pub const BRAVEBRAND_CLIENT: bool = cfg!(feature = "bravebrand-client");
-pub const SESSION_SERVICE_PREFIX: &str = if BRAVEBRAND_CLIENT {
+pub const SESSION_SERVICE_PREFIX: &str = if BRAVEBRAND_REHEARSAL {
+    "com.bravebrand.workrooms.rehearsal.federated-session"
+} else if BRAVEBRAND_CLIENT {
     "com.bravebrand.buzz.client.federated-session"
 } else {
     "xyz.block.buzz.desktop.federated-session"
@@ -42,7 +45,9 @@ pub const PREVIOUS_HUMAN_SERVICE: &str = human_store(cfg!(debug_assertions));
 pub const HUMAN_STORE: &str = human_store(cfg!(debug_assertions));
 
 pub const fn human_service(debug: bool) -> &'static str {
-    if BRAVEBRAND_CLIENT {
+    if BRAVEBRAND_REHEARSAL {
+        "com.bravebrand.workrooms.rehearsal.identity"
+    } else if BRAVEBRAND_CLIENT {
         "com.bravebrand.buzz.client.identity"
     } else if debug {
         "xyz.block.buzz.desktop.identity.debug"
@@ -52,7 +57,9 @@ pub const fn human_service(debug: bool) -> &'static str {
 }
 
 pub const fn human_store(debug: bool) -> &'static str {
-    if BRAVEBRAND_CLIENT {
+    if BRAVEBRAND_REHEARSAL {
+        "com.bravebrand.workrooms.rehearsal.identity-store"
+    } else if BRAVEBRAND_CLIENT {
         "com.bravebrand.buzz.client.identity-store"
     } else if debug {
         "dev.local.buzz.foundation.identity.debug"

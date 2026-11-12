@@ -1,0 +1,24 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "identifier": "com.bravebrand.workrooms.rehearsal",
+  "productName": "Brave Agent Workrooms Rehearsal",
+  "build": {
+    "features": [
+      "bravebrand-rehearsal"
+    ]
+  },
+  "plugins": {
+    "deep-link": {
+      "desktop": {
+        "schemes": [
+          "workrooms-rehearsal"
+        ]
+      }
+    }
+  },
+  "bundle": {
+    "macOS": {
+      "signingIdentity": "-"
+    }
+  }
+}

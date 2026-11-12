@@ -12,8 +12,13 @@ pub(super) fn acquire() -> Result<Lock, Failure> {
         .dir;
     acquire_at_home(&home)
 }
+const LOCK_DIRECTORY: &str = if buzz_credential_store::BRAVEBRAND_REHEARSAL {
+    ".com.bravebrand.workrooms.rehearsal.credential-locks"
+} else {
+    ".buzz-foundation-credential-locks"
+};
 fn acquire_at_home(home: &Path) -> Result<Lock, Failure> {
-    acquire_at(&home.join(".buzz-foundation-credential-locks"))
+    acquire_at(&home.join(LOCK_DIRECTORY))
 }
 pub(super) fn acquire_at(root: &Path) -> Result<Lock, Failure> {
     if !root.is_absolute() {
@@ -72,7 +77,7 @@ impl Drop for Lock {
 #[test]
 fn first_run_creates_private_lock_directory_below_home() {
     let home = tempfile::tempdir().unwrap();
-    let root = home.path().join(".buzz-foundation-credential-locks");
+    let root = home.path().join(LOCK_DIRECTORY);
     assert!(!root.exists());
     let mut lock = acquire_at_home(home.path()).unwrap();
     assert_eq!(lock.epoch().unwrap(), [0; 16]);

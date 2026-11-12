@@ -63,7 +63,11 @@ type Kept = &'static [(&'static str, &'static [&'static str])];
 /// Named for the storage every Buzz shares whatever its identifier: the default
 /// plugin folder and the fixed agent key service. It keeps the legacy identifier
 /// so builds from before 1.0 and later ones exclude each other.
-const LOCK: &str = ".dev.local.buzz.foundation.instance.lock";
+const LOCK: &str = if buzz_credential_store::BRAVEBRAND_REHEARSAL {
+    ".com.bravebrand.workrooms.rehearsal.instance.lock"
+} else {
+    ".dev.local.buzz.foundation.instance.lock"
+};
 /// How long a launch waits for an exiting or signing-out instance to let go.
 const WAIT: Duration = if cfg!(test) {
     Duration::from_secs(1)

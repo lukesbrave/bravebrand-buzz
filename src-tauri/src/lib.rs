@@ -994,7 +994,9 @@ pub fn run() {
             #[cfg(target_os = "macos")]
             reshow::install(app.handle());
             #[cfg(target_os = "macos")]
-            if let Some(home) = dirs::home_dir() {
+            if let Some(home) =
+                dirs::home_dir().filter(|_| !buzz_credential_store::BRAVEBRAND_REHEARSAL)
+            {
                 if let Err(error) = legacy_cli_shortcut::remove_stale(&home.join(".local/bin")) {
                     eprintln!("Could not remove old Buzz's CLI shortcut: {error}");
                 }
@@ -1182,9 +1184,11 @@ pub fn run() {
         .manage(DeepLinks::default())
         // Plugin storage lives in this identifier's app data, so development
         // builds keep theirs apart from the installed app.
-        .manage(PluginManager(Manager::from_env(
-            dirs::data_dir().map(|dir| dir.join(&identifier)),
-        )))
+        .manage(PluginManager(if buzz_credential_store::BRAVEBRAND_REHEARSAL {
+            dirs::data_dir().ok_or_else(|| "Missing rehearsal plugin directory".to_owned()).and_then(|dir| Manager::open(Some(dir.join(&identifier)), "default", false))
+        } else {
+            Manager::from_env(dirs::data_dir().map(|dir| dir.join(&identifier)))
+        }))
         .invoke_handler({
             let application_commands = commands::<tauri::Wry>();
             let browser_commands: fn(tauri::ipc::Invoke<tauri::Wry>) -> bool = tauri::generate_handler![

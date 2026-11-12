@@ -288,6 +288,19 @@ fn home_child() {
 }
 #[test]
 fn human_identity_slots_stay_separate() {
+    if BRAVEBRAND_REHEARSAL {
+        assert_eq!(HUMAN_SERVICE, "com.bravebrand.workrooms.rehearsal.identity");
+        assert_eq!(
+            HUMAN_STORE,
+            "com.bravebrand.workrooms.rehearsal.identity-store"
+        );
+        assert_eq!(PREVIOUS_HUMAN_SERVICE, HUMAN_STORE);
+        assert_eq!(
+            SESSION_SERVICE_PREFIX,
+            "com.bravebrand.workrooms.rehearsal.federated-session"
+        );
+        return;
+    }
     if BRAVEBRAND_CLIENT {
         assert_eq!(HUMAN_SERVICE, "com.bravebrand.buzz.client.identity");
         assert_eq!(

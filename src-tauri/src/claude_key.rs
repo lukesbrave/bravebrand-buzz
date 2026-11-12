@@ -23,7 +23,9 @@ use tokio::sync::Mutex;
 use zeroize::Zeroizing;
 
 #[cfg_attr(test, allow(dead_code))]
-const SERVICE: &str = if cfg!(debug_assertions) {
+const SERVICE: &str = if buzz_credential_store::BRAVEBRAND_REHEARSAL {
+    "com.bravebrand.workrooms.rehearsal.claude-api-key"
+} else if cfg!(debug_assertions) {
     "xyz.block.buzz.desktop.claude-api-key.debug"
 } else {
     "xyz.block.buzz.desktop.claude-api-key"

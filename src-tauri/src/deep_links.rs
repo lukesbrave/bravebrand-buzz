@@ -9,6 +9,12 @@ use tauri::{ipc::Channel, Manager};
 
 /// All desktop builds use the same scheme as in-app links and Copy link.
 const SCHEME: &str = "buzz";
+// Keep the shared navigation parser on its canonical scheme. Only OS ingress differs.
+const OS_SCHEME: &str = if buzz_credential_store::BRAVEBRAND_REHEARSAL {
+    "workrooms-rehearsal"
+} else {
+    SCHEME
+};
 
 /// A cold start can receive links before the webview exists. The newest are kept so
 /// a late reader still sees the user's latest intent. The OS bounds each URL's size.
@@ -82,7 +88,13 @@ pub(crate) fn focus_main<R: tauri::Runtime>(app: &tauri::AppHandle<R>) {
 }
 
 fn accept<R: tauri::Runtime>(app: &tauri::AppHandle<R>, raw: &str) {
-    match app.state::<DeepLinks>().push(raw) {
+    let Some((incoming, rest)) = raw.split_once(':') else {
+        return;
+    };
+    if incoming != OS_SCHEME {
+        return;
+    }
+    match app.state::<DeepLinks>().push(&format!("{SCHEME}:{rest}")) {
         Ok(()) => focus_main(app),
         // The URL itself is not logged; it may carry a message locator.
         Err(error) => eprintln!(
@@ -138,7 +150,7 @@ fn claim_macos_default(bundle_id: &str) -> Result<(), i32> {
         fn LSSetDefaultHandlerForURLScheme(scheme: *const NSString, bundle: *const NSString)
             -> i32;
     }
-    let scheme = NSString::from_str(SCHEME);
+    let scheme = NSString::from_str(OS_SCHEME);
     let bundle = NSString::from_str(bundle_id);
     match unsafe { LSSetDefaultHandlerForURLScheme(&*scheme, &*bundle) } {
         0 => Ok(()),
@@ -186,6 +198,29 @@ mod tests {
             config["plugins"]["deep-link"]["desktop"]["schemes"],
             serde_json::json!([SCHEME])
         );
+    }
+
+    #[test]
+    fn rehearsal_bundle_registers_its_own_scheme_and_credential_feature() {
+        let config: serde_json::Value =
+            serde_json::from_str(include_str!("../tauri.bravebrand-rehearsal.conf.json")).unwrap();
+        assert_eq!(config["identifier"], "com.bravebrand.workrooms.rehearsal");
+        assert_eq!(
+            config["build"]["features"],
+            serde_json::json!(["bravebrand-rehearsal"])
+        );
+        assert_eq!(
+            config["plugins"]["deep-link"]["desktop"]["schemes"],
+            serde_json::json!(["workrooms-rehearsal"])
+        );
+        if buzz_credential_store::BRAVEBRAND_REHEARSAL {
+            assert_eq!(
+                OS_SCHEME,
+                config["plugins"]["deep-link"]["desktop"]["schemes"][0]
+                    .as_str()
+                    .unwrap()
+            );
+        }
     }
 
     #[test]

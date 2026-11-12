@@ -2,6 +2,8 @@
 
 Build the local macOS client with `scripts/bravebrand-client.sh`. Open `target/debug/bundle/macos/BraveBrand.app`. Enter your relay’s HTTPS address or invite link and choose **Create my identity**. Your server controls admission. For an invite-only relay, use an invite or have the administrator admit the public key shown during setup. Save a private recovery copy from **Settings → Identity**. This build stores its identity separately from Buzz and does not configure a Builderlab sign-in server.
 
+To rehearse first launch on the same macOS login, run `scripts/bravebrand-client.sh --rehearsal` and open `target/debug/bundle/macos/Brave Agent Workrooms Rehearsal.app`. This separate installation owns its own identity, agents, plugin profile and URL scheme. Enter the new server’s HTTPS address or paste its invite into the app. Reopening the rehearsal app resumes that rehearsal. AI tools installed for the macOS user can still be available.
+
 # BraveBrand Buzz pilot
 
 This Mac pilot includes the Claude Code account sign-in from upstream [pull request 2995](https://github.com/block/buzz-app/pull/2995), pinned at `23a7fbdbc`. The client uses the account the owner signs into through Claude Code. The pilot build has its own app identifier and URL scheme.

@@ -13,13 +13,17 @@ mod platform;
 #[cfg(test)]
 mod tests;
 
-const SERVICE: &str = if buzz_credential_store::BRAVEBRAND_CLIENT {
+const SERVICE: &str = if buzz_credential_store::BRAVEBRAND_REHEARSAL {
+    "com.bravebrand.workrooms.rehearsal.agents"
+} else if buzz_credential_store::BRAVEBRAND_CLIENT {
     "com.bravebrand.buzz.client.agents"
 } else {
     "xyz.block.buzz.desktop.agents"
 };
 /// The service before 1.0. Reads copy a key found only there; deletes remove it too.
-const PREVIOUS_SERVICE: &str = if buzz_credential_store::BRAVEBRAND_CLIENT {
+const PREVIOUS_SERVICE: &str = if buzz_credential_store::BRAVEBRAND_REHEARSAL {
+    "com.bravebrand.workrooms.rehearsal.previous-agents"
+} else if buzz_credential_store::BRAVEBRAND_CLIENT {
     "com.bravebrand.buzz.client.previous-agents"
 } else {
     "dev.local.buzz.foundation.agents"
