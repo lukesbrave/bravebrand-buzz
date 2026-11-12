@@ -18,6 +18,7 @@ import type {
   RegisteredAgentType,
   TranscriptRequest,
 } from "./service";
+import { ActivityPanel } from "../../bundled/builderlab/adapter-type/Activity";
 import { AgentSaveButton } from "./AgentSaveButton";
 import { AgentConfigHistoryRow } from "./AgentConfigHistoryRow";
 import { SettingsGroup } from "../../shared/design-system/ui/SettingsGroup";
@@ -164,6 +165,27 @@ export function agentSections({
         </div>
       ),
     });
+  if (
+    import.meta.env.VITE_BRAVEBRAND_SELF_HOSTED === "true" &&
+    type?.key === "bravebrand.hire/vps-claude" &&
+    type.remote &&
+    !typeTabs.some((tab) => tab.role === "activity")
+  ) {
+    tabs.push({
+      value: "agent:activity",
+      label: "Activity",
+      render: () => (
+        <ActivityPanel
+          agent={agent}
+          activity={memoryLinks?.session.agentActivity}
+          names={memoryLinks?.session.names}
+          conversation={conversation}
+          initialTranscript={initialTranscript}
+          openConversation={openConversation}
+        />
+      ),
+    });
+  }
   // A tab for local agents only says so in its `when`.
   for (const { key, title, component: Component, when } of agents.addedTabs())
     if (!when || shows(when, agent, key))
