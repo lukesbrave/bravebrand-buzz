@@ -78,11 +78,17 @@ export function CommunityLanding({
           {ownerKey && (
             <div className="mt-4 grid w-full max-w-md gap-4 text-left">
               <p className="m-0 text-body text-subtle">
-                Setting up your own server? Give it this public key, so it knows
-                you are the owner. When the server is ready, enter its address
-                below.
+                1. Copy this code and send it to your coding agent.
               </p>
-              <PublicKeyPanel publicKey={ownerKey} />
+              <PublicKeyPanel
+                publicKey={ownerKey}
+                heading="Your code"
+                note="This code is safe to share."
+              />
+              <p className="m-0 text-body text-subtle">
+                2. Your agent will send back your workspace address. Paste it
+                here.
+              </p>
             </div>
           )}
           <form
@@ -101,7 +107,14 @@ export function CommunityLanding({
                 );
             }}
           >
-            <Field label="Invite link or community URL" error={error}>
+            <Field
+              label={
+                ownerKey
+                  ? "Workspace address or invite link"
+                  : "Invite link or community URL"
+              }
+              error={error}
+            >
               <Input
                 autoFocus
                 value={link}
@@ -120,7 +133,7 @@ export function CommunityLanding({
               variant="prominent"
               disabled={!link.trim()}
             >
-              Join
+              {ownerKey ? "Connect" : "Join"}
             </Button>
           </form>
         </>

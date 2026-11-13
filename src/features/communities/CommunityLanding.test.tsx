@@ -78,6 +78,10 @@ it("shows this device's public key only in a build for servers people run themse
   ).toBeVisible();
   expect(screen.getByText(/^npub1/)).toBeVisible();
   expect(screen.getByRole("button", { name: "Copy npub" })).toBeVisible();
+  expect(
+    screen.getByLabelText("Workspace address or invite link"),
+  ).toBeVisible();
+  expect(screen.getByRole("button", { name: "Connect" })).toBeVisible();
 });
 
 it("opens the join steps from a pasted invite page link", async () => {

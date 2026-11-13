@@ -63,7 +63,7 @@ codesign --verify --deep --strict "$bundle" &&
   codesign --verify --deep --strict "/Applications/$app"
 ```
 
-Tell them where the icon is and let them open it. They choose **Set up my workspace**, then **Create my key**. The key is made on their Mac and its private half stays in their Keychain. The next screen shows their public key with a **Copy** button. Ask them to paste it to you. It starts with `npub1`.
+Tell them where the icon is and let them open it. They choose **Set up my workspace**, then **Create my key**. The next screen shows a code with a **Copy** button. Ask them to paste it to you. It is their public key and starts with `npub1`. Their private key stays in their Mac's Keychain and is never shown.
 
 ## Step 6 of 7 · Start the workspace
 
@@ -77,7 +77,7 @@ If it stops, fix what it reports and run the same command again. It never replac
 
 ## Step 7 of 7 · Walk in
 
-Give them the address the command printed. They enter it in the app, still open on **Connect your workspace**, and choose **Join**. They complete their name and picture. Have them confirm that the members list shows them as **Owner**.
+Give them the address the command printed. They paste it in the app, still open on **Connect your workspace**, and choose **Connect**. They complete their name and picture. Have them confirm that the members list shows them as **Owner**.
 
 Then, before anything else:
 

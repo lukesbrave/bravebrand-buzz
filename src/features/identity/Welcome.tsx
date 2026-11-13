@@ -1196,8 +1196,8 @@ export function Welcome({
               Welcome
             </h1>
             <p className="mt-2 text-body text-subtle">
-              Your workspace runs on a server you own. Are you setting one up,
-              or joining one?
+              Are you starting a new workspace, or joining one you were invited
+              to?
             </p>
           </div>
           <div className="flex flex-col gap-2">
@@ -1230,13 +1230,11 @@ export function Welcome({
               Create your key
             </h1>
             <p className="mt-2 text-body text-subtle">
-              Your key proves this workspace is yours. It is made on this
-              computer and the private half never leaves it. There is no
-              password, and nobody can reset it for you.
+              Your key is how you sign in. There is no password, and nobody can
+              reset it for you.
             </p>
             <p className="mt-2 text-body text-subtle">
-              Next you get a public key to give to your server, so it knows you
-              are the owner.
+              Next, you will copy a code to send to your coding agent.
             </p>
           </div>
           <div className="flex flex-col gap-2">
