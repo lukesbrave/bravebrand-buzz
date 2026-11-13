@@ -1,0 +1,13 @@
+{
+	admin off
+}
+
+:8080 {
+	@private path /admin /admin/* /api/admin /api/admin/* /api/v1/admin /api/v1/admin/* /operator /operator/* /metrics /health /_readiness /_liveness /_mesh/* /debug /debug/*
+	handle @private {
+		respond 404
+	}
+	handle {
+		reverse_proxy relay:3000
+	}
+}
