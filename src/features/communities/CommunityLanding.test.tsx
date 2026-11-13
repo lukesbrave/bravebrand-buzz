@@ -54,7 +54,9 @@ function landing({
   return props;
 }
 
-it("shows this device's public key only in a build for servers people run themselves", () => {
+it("shows this device's public key only in a build for servers people run themselves, and confirms a copy on the button", async () => {
+  // userEvent.setup() installs jsdom's missing navigator.clipboard.
+  const user = userEvent.setup();
   const viewer = "a".repeat(64);
   const withViewer = {
     snapshot: () => ({ ...communities.snapshot(), viewer }),
@@ -77,11 +79,19 @@ it("shows this device's public key only in a build for servers people run themse
     screen.getByRole("heading", { name: "Connect your workspace" }),
   ).toBeVisible();
   expect(screen.getByText(/^npub1/)).toBeVisible();
-  expect(screen.getByRole("button", { name: "Copy npub" })).toBeVisible();
+  expect(screen.getByRole("button", { name: "Copy code" })).toBeVisible();
   expect(
-    screen.getByLabelText("Workspace address or invite link"),
+    screen.getByLabelText(
+      "2. Paste the workspace address your agent sends back",
+    ),
   ).toBeVisible();
   expect(screen.getByRole("button", { name: "Connect" })).toBeVisible();
+  await user.click(screen.getByRole("button", { name: "Copy code" }));
+  expect(await screen.findByRole("status")).toHaveTextContent("Code copied.");
+  expect(screen.getByRole("button", { name: "Copy code" })).toHaveTextContent(
+    "Copied",
+  );
+  expect(await navigator.clipboard.readText()).toMatch(/^npub1/);
 });
 
 it("opens the join steps from a pasted invite page link", async () => {

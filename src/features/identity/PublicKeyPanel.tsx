@@ -12,11 +12,9 @@ import { WireframePanel } from "./Wireframe";
 export function PublicKeyPanel({
   publicKey,
   heading = "Your public key (npub)",
-  note = "This is your public identity — it’s safe to share.",
 }: {
   publicKey: string;
   heading?: string;
-  note?: string;
 }) {
   const [copyStatus, setCopyStatus] = useState("");
   return (
@@ -45,7 +43,9 @@ export function PublicKeyPanel({
       <code className="block select-text break-all font-mono text-mono">
         {publicKey}
       </code>
-      <p className="m-0 text-body-sm text-subtle">{note}</p>
+      <p className="m-0 text-body-sm text-subtle">
+        This is your public identity — it’s safe to share.
+      </p>
       <span role="status" className="text-body-sm text-subtle">
         {copyStatus}
       </span>

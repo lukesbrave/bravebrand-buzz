@@ -9,14 +9,18 @@ How to guide:
 - Give one step at a time. Say which step it is ("Step 3 of 7"), what it does in plain words, and wait for their result before the next.
 - Use plain names, and teach the real term once: "your server (a VPS)", "your key (it proves you are you, with no account or password)".
 - When a step finishes, say what they now own.
+- Whenever you send them to a website, give the direct link and say exactly where to click, in order. The course's two are https://console.hetzner.cloud and https://dash.cloudflare.com.
+- Whenever they need to paste something you produced, print all of it in its own code block at that moment. Never shorten it with "…" or point back to an earlier message.
 - Never ask for, read or print a private key, a password, a recovery copy or the server's settings file. A private key starts with `nsec`. The only key they share with you starts with `npub`.
 - If they are joining a workspace someone else set up, skip to **Joining with an invite**.
 
-They need an Apple silicon Mac with about 16 GB of free disk, a domain whose DNS they control, and an account with a server provider. The course uses Cloudflare for DNS and Hetzner for the server.
+They need an Apple silicon Mac with about 16 GB of free disk, a domain (they can register one during setup), and an account with a server provider. The course uses Cloudflare for the domain and DNS, and Hetzner for the server.
 
 ## Step 1 of 7 · Name the workspace
 
-Ask which address the workspace should have: an unused name on their domain, such as `team.example.com`. Everything else uses this name, so settle it first.
+Ask which address the workspace should have: an unused name on a domain they own, such as `team.example.com`. In the same question tell them: "If you don't have a domain yet, that's fine, we'll get one set up." Everything else uses this name, so settle it first.
+
+If they have no domain, a made-up address will not work: the name has to be on a domain registered to them. Help them choose a domain name, plan the address on it, and carry on with the build. They register it at the start of step 4.
 
 ## Step 2 of 7 · Start building the app
 
@@ -30,15 +34,26 @@ bin/rustup toolchain install && ./scripts/bravebrand-client.sh --rehearsal
 
 ## Step 3 of 7 · Create the server
 
-While the app builds, walk them through creating a server in their own provider account. On Hetzner: a new project, one Ubuntu 24.04 server, the small shared x86 plan with 4 GB of memory (CX23 at the time of writing; confirm the plan on the order screen).
+While the app builds, walk them through creating a **new** server in their own provider account. Do the key first, because the server only accepts a key that is selected when it is created.
 
-The server is reached with an SSH key. If `~/.ssh` has no key they already use, create one for this server and show them only the public half to paste into the provider's SSH key field:
+Create a key for this server. If `~/.ssh/workrooms_ed25519` already exists, reuse it and skip the first command:
 
 ```sh
-ssh-keygen -t ed25519 -N "" -f ~/.ssh/workrooms_ed25519 -C workrooms && cat ~/.ssh/workrooms_ed25519.pub
+ssh-keygen -t ed25519 -N "" -f ~/.ssh/workrooms_ed25519 -C workrooms
+cat ~/.ssh/workrooms_ed25519.pub
 ```
 
-With a dedicated key, add a `Host workrooms` entry to `~/.ssh/config` with the server's IP as `HostName`, `User root` and that `IdentityFile`, and use `root@workrooms` below. Ask them for the server's IPv4 address once it is running.
+Print that whole public line for them in its own code block. On Hetzner (https://console.hetzner.cloud) they open their project, go to **Security → SSH keys → Add SSH key**, and paste it.
+
+Then they choose **Add Server**:
+
+- **Image:** Ubuntu, the newest long-term release offered (24.04 or later).
+- **Plan:** the cheapest with at least 4 GB of memory. Either processor type works, x86 or Arm. If the cheapest plans are greyed out, they are out of stock at that location: try another location, then the other processor type, then the next range up.
+- **SSH keys:** tick the `workrooms` key. Without it nobody can log in.
+
+Ask them for the server's IPv4 address once it is running. Add a `Host workrooms` entry to `~/.ssh/config` with that address as `HostName`, `User root`, `IdentityFile ~/.ssh/workrooms_ed25519` and `IdentitiesOnly yes`, and use `root@workrooms` below.
+
+Reusing an old server is not worth it. The setup needs ports 80 and 443 free, and rebuilding a server in the provider's console does not add this key. If the address they give you once belonged to another server, run `ssh-keygen -R` with that address before connecting.
 
 ## Step 4 of 7 · Point the name at the server
 
@@ -49,7 +64,9 @@ bin/pnpm install --frozen-lockfile
 bin/node scripts/workrooms-server/install.mjs root@SERVER team.example.com
 ```
 
-Have them add that record in their DNS account: type **A**, their chosen name, the server's IPv4 address. In Cloudflare the proxy must be off (**DNS only**).
+If they still need a domain, they register it now, in their own account, and pay for it themselves. In Cloudflare (https://dash.cloudflare.com) this is under **Domain Registration → Register Domains**.
+
+Then have them add the record the command printed. In Cloudflare: open the domain, go to **DNS → Records → Add record**, and enter type **A**, the name, and the server's IPv4 address. Switch **Proxy status** off so it reads **DNS only**, then **Save**. Show them the four values in a small table.
 
 ## Step 5 of 7 · Create the owner's key
 
@@ -81,7 +98,7 @@ Give them the address the command printed. They paste it in the app, still open 
 
 Then, before anything else:
 
-1. **Save a recovery copy of the key.** In **Settings → Identity** they save a recovery copy somewhere only they control, such as their password manager. Without it, a lost Mac means a lost owner key. Do not look at it.
+1. **Back up their key.** Say it this way: "The key you made on the Create my key screen is how you sign in as the owner. It only exists on this Mac. If this Mac is lost or replaced and you have no backup, nobody can get you back in." In the app they open **Settings → Identity**, find **Private key**, choose **Copy private key**, and paste it straight into their password manager. It starts with `nsec`. It must never be pasted into this chat.
 2. **Write their ownership note.** Create `My Workrooms.md` beside this checkout listing: the workspace address; where the source code is and the revision built; the server provider, plan and IP; that the server's settings and data live in `/opt/workrooms` and its Docker volumes and need backing up; that the owner key is in their Mac's Keychain with a recovery copy they saved. No secrets go in this file.
 3. **Invite someone.** They create an invite in the app and send it privately.
 

@@ -1,10 +1,11 @@
 import { useState, useSyncExternalStore } from "react";
 import { npubEncode } from "nostr-tools/nip19";
+import { writeClipboardText } from "../../shared/clipboard";
+import { CopyIcon } from "../../shared/design-system/icons/index";
 import { Button } from "../../shared/design-system/ui/Button";
 import { Field } from "../../shared/design-system/ui/Field";
 import { Input } from "../../shared/design-system/ui/Input";
 import { OnboardingScreen } from "../identity/OnboardingScreen";
-import { PublicKeyPanel } from "../identity/PublicKeyPanel";
 import type { SettingsCards } from "../settings/service";
 import { CommunityDialog } from "./CommunityDialog";
 import type { FederatedIdentity } from "../federated-identity/service";
@@ -43,6 +44,7 @@ export function CommunityLanding({
   // The app re-renders the landing whenever the client's viewer changes.
   const viewer = selfHosted ? communities.snapshot().viewer : undefined;
   const ownerKey = viewer ? npubEncode(viewer) : undefined;
+  const [copy, setCopy] = useState<"copied" | "failed">();
   const [link, setLink] = useState("");
   const [error, setError] = useState("");
   const [joining, setJoining] = useState<InviteLink>();
@@ -76,19 +78,47 @@ export function CommunityLanding({
             {ownerKey ? "Connect your workspace" : "Join a community"}
           </h1>
           {ownerKey && (
-            <div className="mt-4 grid w-full max-w-md gap-4 text-left">
-              <p className="m-0 text-body text-subtle">
-                1. Copy this code and send it to your coding agent.
-              </p>
-              <PublicKeyPanel
-                publicKey={ownerKey}
-                heading="Your code"
-                note="This code is safe to share."
-              />
-              <p className="m-0 text-body text-subtle">
-                2. Your agent will send back your workspace address. Paste it
-                here.
-              </p>
+            <div className="mt-4 grid w-full max-w-md gap-2 text-left">
+              <h2 className="m-0 text-label text-standard">
+                1. Copy this code and send it to your coding agent
+              </h2>
+              <div
+                className="flex items-center gap-2 p-3"
+                style={{
+                  background: "var(--affordance-subtle)",
+                  borderRadius: "var(--radius-control)",
+                }}
+              >
+                <code className="min-w-0 flex-1 select-text break-all font-mono text-mono">
+                  {ownerKey}
+                </code>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  aria-label="Copy code"
+                  onClick={() =>
+                    writeClipboardText(ownerKey).then(
+                      () => setCopy("copied"),
+                      () => setCopy("failed"),
+                    )
+                  }
+                >
+                  <CopyIcon size={16} aria-hidden="true" />
+                  {copy === "copied" ? "Copied" : "Copy"}
+                </Button>
+              </div>
+              <span
+                role="status"
+                className={
+                  copy === "failed" ? "text-body-sm text-subtle" : "sr-only"
+                }
+              >
+                {copy === "copied"
+                  ? "Code copied."
+                  : copy === "failed"
+                    ? "Could not copy. Select the code to copy it."
+                    : ""}
+              </span>
             </div>
           )}
           <form
@@ -109,9 +139,14 @@ export function CommunityLanding({
           >
             <Field
               label={
-                ownerKey
-                  ? "Workspace address or invite link"
-                  : "Invite link or community URL"
+                ownerKey ? (
+                  // The same weight as step 1's heading.
+                  <span className="text-label">
+                    2. Paste the workspace address your agent sends back
+                  </span>
+                ) : (
+                  "Invite link or community URL"
+                )
               }
               error={error}
             >
