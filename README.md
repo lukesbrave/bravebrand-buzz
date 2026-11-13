@@ -1,16 +1,59 @@
-# Set up Workrooms on my Mac
+# Set up my Workrooms
 
-**For the coding agent receiving this GitHub link:** install the course desktop app on the user's Mac. Run the commands yourself in a local macOS session. If the chat is running on a cloud machine, help the user switch to a local session first.
+**For the coding agent receiving this GitHub link.** The person in front of you is setting up a private workspace that they own: the app's source code on their Mac, the community on a server in their account, and a key that only their Mac holds. They may never have used a terminal. You are their guide for the whole setup.
 
-1. Clone this repository into a fresh folder at the revision in the supplied GitHub link. For a commit link, verify that `git rev-parse HEAD` matches that commit before building. Keep this checkout so the user owns a local copy of the source.
-2. Check `xcode-select -p`. If the Command Line Tools are missing, run `xcode-select --install` and let the user complete the macOS prompt. Use the repository's Hermit tools, which select its pinned Rust, Node and pnpm versions.
-3. From the checkout, run the following. The desktop build can finish before the user has a community address.
+How to guide:
+
+- Run every command yourself, in a local macOS session. If this chat is running on a cloud machine, help them switch to a local session first.
+- Open by telling them the plan: seven steps, you do most of them, and they do four small things (name the workspace, create the server, add one DNS record, create their key).
+- Give one step at a time. Say which step it is ("Step 3 of 7"), what it does in plain words, and wait for their result before the next.
+- Use plain names, and teach the real term once: "your server (a VPS)", "your key (it proves you are you, with no account or password)".
+- When a step finishes, say what they now own.
+- Never ask for, read or print a private key, a password, a recovery copy or the server's settings file. A private key starts with `nsec`. The only key they share with you starts with `npub`.
+- If they are joining a workspace someone else set up, skip to **Joining with an invite**.
+
+They need an Apple silicon Mac with about 16 GB of free disk, a domain whose DNS they control, and an account with a server provider. The course uses Cloudflare for DNS and Hetzner for the server.
+
+## Step 1 of 7 · Name the workspace
+
+Ask which address the workspace should have: an unused name on their domain, such as `team.example.com`. Everything else uses this name, so settle it first.
+
+## Step 2 of 7 · Start building the app
+
+Clone this repository into a fresh folder at the revision in the supplied link. For a commit link, verify that `git rev-parse HEAD` matches it. Tell them this folder is their own copy of the app's source code.
+
+Check `xcode-select -p`. If the Command Line Tools are missing, run `xcode-select --install` and let them complete the macOS prompt. Then start the build in the background and move on while it runs:
 
 ```sh
 bin/rustup toolchain install && ./scripts/bravebrand-client.sh --rehearsal
 ```
 
-4. After a successful build, install the app. On a fresh Mac use the following commands. If Applications already contains a bundle at that name, verify its identifier first and move the old bundle aside before copying. Use the user's Applications folder if the system folder requires administrator access.
+## Step 3 of 7 · Create the server
+
+While the app builds, walk them through creating a server in their own provider account. On Hetzner: a new project, one Ubuntu 24.04 server, the small shared x86 plan with 4 GB of memory (CX23 at the time of writing; confirm the plan on the order screen).
+
+The server is reached with an SSH key. If `~/.ssh` has no key they already use, create one for this server and show them only the public half to paste into the provider's SSH key field:
+
+```sh
+ssh-keygen -t ed25519 -N "" -f ~/.ssh/workrooms_ed25519 -C workrooms && cat ~/.ssh/workrooms_ed25519.pub
+```
+
+With a dedicated key, add a `Host workrooms` entry to `~/.ssh/config` with the server's IP as `HostName`, `User root` and that `IdentityFile`, and use `root@workrooms` below. Ask them for the server's IPv4 address once it is running.
+
+## Step 4 of 7 · Point the name at the server
+
+Prepare the server. This installs Docker, fetches the community software and prints the DNS record to create. It is safe to run before a key exists:
+
+```sh
+bin/pnpm install --frozen-lockfile
+bin/node scripts/workrooms-server/install.mjs root@SERVER team.example.com
+```
+
+Have them add that record in their DNS account: type **A**, their chosen name, the server's IPv4 address. In Cloudflare the proxy must be off (**DNS only**).
+
+## Step 5 of 7 · Create the owner's key
+
+When the build finishes, install the app. If Applications already contains a bundle of that name, verify its identifier and move the old bundle aside first. Use the user's own Applications folder if the system one needs an administrator.
 
 ```sh
 app="Brave Agent Workrooms Rehearsal.app"
@@ -20,7 +63,31 @@ codesign --verify --deep --strict "$bundle" &&
   codesign --verify --deep --strict "/Applications/$app"
 ```
 
-5. For a new community on this Mac, continue with **Host my community** below. For someone joining an existing community, tell the user where the icon is and let them open it. At **Connect to your VPS**, they can paste a private invite from an existing community or enter its HTTPS address. A new identity needs admission to an invite-only community. Have the user create their own identity and handle any provider sign-in in the app. Keep private invites and recovery keys out of the chat.
+Tell them where the icon is and let them open it. They choose **Set up my workspace**, then **Create my key**. The key is made on their Mac and its private half stays in their Keychain. The next screen shows their public key with a **Copy** button. Ask them to paste it to you. It starts with `npub1`.
+
+## Step 6 of 7 · Start the workspace
+
+Create the community with their public key as its owner. The command waits until this Mac resolves the name, starts the community, and then checks it from this Mac over HTTPS: the public address must answer as this community, refuse an anonymous read and hide its operator routes.
+
+```sh
+bin/node scripts/workrooms-server/install.mjs root@SERVER team.example.com npub1…
+```
+
+If it stops, fix what it reports and run the same command again. It never replaces an existing community's owner or address.
+
+## Step 7 of 7 · Walk in
+
+Give them the address the command printed. They enter it in the app, still open on **Connect your workspace**, and choose **Join**. They complete their name and picture. Have them confirm that the members list shows them as **Owner**.
+
+Then, before anything else:
+
+1. **Save a recovery copy of the key.** In **Settings → Identity** they save a recovery copy somewhere only they control, such as their password manager. Without it, a lost Mac means a lost owner key. Do not look at it.
+2. **Write their ownership note.** Create `My Workrooms.md` beside this checkout listing: the workspace address; where the source code is and the revision built; the server provider, plan and IP; that the server's settings and data live in `/opt/workrooms` and its Docker volumes and need backing up; that the owner key is in their Mac's Keychain with a recovery copy they saved. No secrets go in this file.
+3. **Invite someone.** They create an invite in the app and send it privately.
+
+## Joining with an invite
+
+Build and install the app as in steps 2 and 5. The person opens it, chooses **I have an invite**, pastes the invite link they were sent and chooses **Create my identity**. Keep invites and recovery copies out of the chat.
 
 ## Host my community on this Mac
 
@@ -30,12 +97,12 @@ The app and server can be set up independently. If the app is already building o
 2. Have the owner authorize creation of the local community and its owner identity. Run `bin/node scripts/local-community/setup.mjs team.example.com` with their chosen hostname. This starts the relay, database and file storage in their own Compose project. It generates an owner key file in a private directory on their Mac and prints only its path. Rerun with the same hostname after interruptions. Never read or print the private file or the server settings into the conversation.
 3. Guide the owner through creating a **named Cloudflare Tunnel** in their account. Run its connector on this Mac. The owner handles Cloudflare sign-in and enters any connector credential privately. Add a published application route for the chosen hostname with service type **HTTP** and URL **127.0.0.1:18479**. Use a fresh DNS name. The gateway only listens on loopback and forwards permitted routes to the invite-only relay. [Cloudflare Tunnel setup](https://developers.cloudflare.com/cloudflare-one/networks/connectors/cloudflare-tunnel/get-started/create-remote-tunnel/)
 4. Before opening the app, check HTTPS discovery. Fetch both `http://127.0.0.1:18479/` (with the chosen Host header) and the public HTTPS URL with `Accept: application/nostr+json`. Require matching nonempty `self` public keys, anonymous POST to `/query` rejected, and public `/operator/communities` returning 404. Resolve any tunnel or DNS error before continuing.
-5. The owner opens Workrooms, enters the public HTTPS address and chooses **Use an existing key**. Have them use the file picker to import `~/Library/Application Support/BraveBrand Workrooms Local Server/owner.txt` privately. This is the identity the local relay recognizes as its owner. Complete the profile and verify Owner in membership. Create an invite in the app and send it privately to the employee. The employee pastes the invite in Workrooms and uses their own identity. Verify a message in both directions.
+5. The owner opens Workrooms and chooses **Set up my workspace**, then **Use an existing key**. Have them use the file picker to import `~/Library/Application Support/BraveBrand Workrooms Local Server/owner.txt` privately. They then enter the public HTTPS address on **Connect your workspace**. This is the identity the local relay recognizes as its owner. Complete the profile and verify Owner in membership. Create an invite in the app and send it privately to the employee. The employee pastes the invite in Workrooms and uses their own identity. Verify a message in both directions.
 6. Keep the private server settings and owner file with your backups, alongside backups of the Docker volumes containing the database, uploads and git data. To pause the server, use Docker Desktop to stop the **bravebrand-workrooms-local** project. Starting it again preserves the community. Removing volumes erases community data.
 
 # BraveBrand self-hosted client
 
-Build the local macOS client with `scripts/bravebrand-client.sh`. Open `target/debug/bundle/macos/BraveBrand.app`. Enter your relay’s HTTPS address or invite link and choose **Create my identity**. Your server controls admission. For an invite-only relay, use an invite or have the administrator admit the public key shown during setup. Save a private recovery copy from **Settings → Identity**. This build stores its identity separately from Buzz and does not configure a Builderlab sign-in server.
+Build the local macOS client with `scripts/bravebrand-client.sh`. Open `target/debug/bundle/macos/BraveBrand.app`. Choose **I have an invite**, enter your relay’s HTTPS address or invite link and choose **Create my identity**. Your server controls admission. For an invite-only relay, use an invite or have the administrator admit the public key shown during setup. Save a private recovery copy from **Settings → Identity**. This build stores its identity separately from Buzz and does not configure a Builderlab sign-in server.
 
 To rehearse first launch on the same macOS login, run `scripts/bravebrand-client.sh --rehearsal` and open `target/debug/bundle/macos/Brave Agent Workrooms Rehearsal.app`. This separate installation owns its own identity, agents, plugin profile and URL scheme. Enter the new server’s HTTPS address or paste its invite into the app. Reopening the rehearsal app resumes that rehearsal. AI tools installed for the macOS user can still be available.
 

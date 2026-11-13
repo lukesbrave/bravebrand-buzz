@@ -50,7 +50,7 @@ services:
 
   gateway:
     image: caddy@sha256:78bd35025c7ba85961dd149ae670315129954e77abe2383ac47c89106b35ade9
-    ports: ["127.0.0.1:18479:8080"]
+    ports: ["127.0.0.1:${WORKROOMS_LOCAL_PORT:-18479}:8080"]
     volumes: ["./Caddyfile:/etc/caddy/Caddyfile:ro"]
     networks: [buzz-net]
     restart: unless-stopped

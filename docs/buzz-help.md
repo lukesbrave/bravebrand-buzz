@@ -6,7 +6,7 @@ current app context and available tools to check anything it does not cover.
 
 ## BraveBrand self-hosted client
 
-Enter your VPS community address at first launch. Choose **Create my identity** or bring an existing key. Your relay administrator controls admission. Save a recovery copy in **Settings → Identity**.
+At first launch choose **Set up my workspace** to create your key and get the public key your own server needs, or **I have an invite** to enter a community address or invite link and then **Create my identity** or bring an existing key. Your relay administrator controls admission. Save a recovery copy in **Settings → Identity**.
 
 ## Start with useful work
 

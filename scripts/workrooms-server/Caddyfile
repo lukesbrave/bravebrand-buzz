@@ -1,0 +1,24 @@
+{
+	admin off
+}
+
+(workrooms) {
+	@private path /admin /admin/* /api/admin /api/admin/* /api/v1/admin /api/v1/admin/* /operator /operator/* /metrics /health /_readiness /_liveness /_mesh/* /debug /debug/*
+	handle @private {
+		respond 404
+	}
+	handle {
+		reverse_proxy relay:3000
+	}
+}
+
+# Loopback only (see compose.yml): setup reads the relay's identity here.
+:8080 {
+	import workrooms
+}
+
+# Caddy obtains and renews the certificate for this name.
+{$BUZZ_DOMAIN} {
+	encode zstd gzip
+	import workrooms
+}

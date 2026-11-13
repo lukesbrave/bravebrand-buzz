@@ -54,6 +54,32 @@ function landing({
   return props;
 }
 
+it("shows this device's public key only in a build for servers people run themselves", () => {
+  const viewer = "a".repeat(64);
+  const withViewer = {
+    snapshot: () => ({ ...communities.snapshot(), viewer }),
+  } as unknown as Communities;
+  const props = {
+    communities: withViewer,
+    settingsCards: { subscribe: () => () => {}, has: () => false },
+    onInviteClose: vi.fn(),
+    onJoined: vi.fn(),
+    onCreate: vi.fn(),
+  };
+  const { unmount } = render(<CommunityLanding {...props} />);
+  expect(
+    screen.getByRole("heading", { name: "Join a community" }),
+  ).toBeVisible();
+  expect(screen.queryByText(/^npub1/)).toBeNull();
+  unmount();
+  render(<CommunityLanding {...props} selfHosted />);
+  expect(
+    screen.getByRole("heading", { name: "Connect your workspace" }),
+  ).toBeVisible();
+  expect(screen.getByText(/^npub1/)).toBeVisible();
+  expect(screen.getByRole("button", { name: "Copy npub" })).toBeVisible();
+});
+
 it("opens the join steps from a pasted invite page link", async () => {
   const user = userEvent.setup();
   landing();

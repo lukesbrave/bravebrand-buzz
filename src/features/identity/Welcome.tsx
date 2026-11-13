@@ -246,6 +246,9 @@ export function Welcome({
   // The typed address survives a round trip to the find page and back.
   const [entered, setEntered] = useState("");
   const [otherOptions, setOtherOptions] = useState(false);
+  // The self-hosted start's choice. An owner makes a key before any server
+  // knows it; a member brings an invite or an address. Back clears it.
+  const [role, setRole] = useState<"owner" | "member">();
   const returningFromOptions = useRef(false);
   // The canonical origin the user asked to join: before sign-in it drives the
   // discovery lookup; after setup, the Join Community page. Cleared on every
@@ -660,6 +663,17 @@ export function Welcome({
     setup.reset();
   };
   /**
+   * How an owner's key setup ends: no server knows the key yet, so the app's
+   * own landing shows it and takes the address, as every later launch does.
+   */
+  const openApp: SetupStep = {
+    label: "Opening…",
+    run: async () => {
+      enterApp();
+      return { status: "idle" };
+    },
+  };
+  /**
    * Where the restore rests. With nothing admitted, setup ends on the Join
    * page as before. Otherwise it selects the typed address when that was
    * admitted, else the first admitted, and enters the app (after the profile
@@ -985,13 +999,15 @@ export function Welcome({
             onBack={() => {
               // Without a Builderlab sign-in, the found community led straight
               // here, so there is no connect choice to return to.
-              if (!current && !connect && !selfHosted) return backToLanding();
+              // An owner's import came from the start, with no found community.
+              if (role === "owner" || (!current && !connect && !selfHosted))
+                return backToLanding();
               back(!current ? "connect-choice" : "welcome-back", "import");
             }}
             onImport={async (nsec) => {
               await importKey(identity, nsec);
               // A key brought without an account is the self-hosted route.
-              if (!current) void setup.start([]);
+              if (!current) void setup.start(role === "owner" ? [openApp] : []);
               else
                 void setup.start([
                   ...(!linked ? [linkKey(identity, current)] : []),
@@ -1166,7 +1182,88 @@ export function Welcome({
     !auth.error &&
     !discovering &&
     (otherOptions || (selfHosted && !keyLanding))
-  )
+  ) {
+    if (selfHosted && !role)
+      return (
+        <WireframeScreen key="start">
+          <div>
+            <h1
+              id="welcome-title"
+              tabIndex={-1}
+              ref={focusCommunityHeading}
+              className="text-heading text-standard"
+            >
+              Welcome
+            </h1>
+            <p className="mt-2 text-body text-subtle">
+              Your workspace runs on a server you own. Are you setting one up,
+              or joining one?
+            </p>
+          </div>
+          <div className="flex flex-col gap-2">
+            <Button
+              variant="prominent"
+              size="lg"
+              onClick={() => onboardingTransition(() => setRole("owner"))}
+            >
+              Set up my workspace
+            </Button>
+            <Button
+              size="lg"
+              onClick={() => onboardingTransition(() => setRole("member"))}
+            >
+              I have an invite
+            </Button>
+          </div>
+        </WireframeScreen>
+      );
+    if (selfHosted && role === "owner")
+      return (
+        <WireframeScreen key="owner-key">
+          <div>
+            <h1
+              id="welcome-title"
+              tabIndex={-1}
+              ref={focusCommunityHeading}
+              className="text-heading text-standard"
+            >
+              Create your key
+            </h1>
+            <p className="mt-2 text-body text-subtle">
+              Your key proves this workspace is yours. It is made on this
+              computer and the private half never leaves it. There is no
+              password, and nobody can reset it for you.
+            </p>
+            <p className="mt-2 text-body text-subtle">
+              Next you get a public key to give to your server, so it knows you
+              are the owner.
+            </p>
+          </div>
+          <div className="flex flex-col gap-2">
+            <Button
+              variant="prominent"
+              size="lg"
+              onClick={() => void setup.start([createKey(identity), openApp])}
+            >
+              Create my key
+            </Button>
+            <Button
+              size="lg"
+              data-return-focus="import"
+              onClick={() => pause("key-import")}
+            >
+              Use an existing key
+            </Button>
+          </div>
+          <div data-onboarding-actions="">
+            <OnboardingBack
+              onClick={() =>
+                onboardingTransition(() => setRole(undefined), true)
+              }
+            />
+          </div>
+        </WireframeScreen>
+      );
     return (
       <OnboardingScreen
         key="community-entry"
@@ -1179,11 +1276,11 @@ export function Welcome({
               ref={focusCommunityHeading}
               className="text-heading text-standard"
             >
-              {selfHosted ? "Connect to your VPS" : "Join a community"}
+              {selfHosted ? "Join a workspace" : "Join a community"}
             </h1>
             <p className="text-body-sm text-subtle">
               {selfHosted
-                ? "Enter the HTTPS address or invite link for your community."
+                ? "Paste your invite link, or enter the workspace address."
                 : "Enter a community address or an invite link to continue."}
             </p>
           </>
@@ -1193,19 +1290,18 @@ export function Welcome({
           url={entered}
           onUrlChange={setEntered}
           onSubmit={find}
-          onBack={
-            selfHosted
-              ? undefined
-              : () =>
-                  onboardingTransition(() => {
-                    returningFromOptions.current = true;
-                    setOtherOptions(false);
-                  }, true)
+          onBack={() =>
+            onboardingTransition(() => {
+              if (selfHosted) return setRole(undefined);
+              returningFromOptions.current = true;
+              setOtherOptions(false);
+            }, true)
           }
         />
         {legacyOffer}
       </OnboardingScreen>
     );
+  }
   // A device with a Builderlab session saved leads with Sign in; a new one
   // with Create account, which opens the account page's sign-up form. Until
   // the saved session is restored neither is known, so neither can start.

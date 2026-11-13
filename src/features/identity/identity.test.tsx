@@ -2183,7 +2183,10 @@ it("creates a local identity for the client's VPS without a Builderlab session o
       <p>Signed in</p>
     </Welcome>,
   );
-  await screen.findByRole("heading", { name: "Connect to your VPS" });
+  await user.click(
+    await screen.findByRole("button", { name: "I have an invite" }),
+  );
+  await screen.findByRole("heading", { name: "Join a workspace" });
   await user.type(screen.getByRole("textbox"), "relay.example.com:8443{Enter}");
   await act(async () => relay.info.resolve());
   await user.click(
@@ -2196,6 +2199,68 @@ it("creates a local identity for the client's VPS without a Builderlab session o
   expect(
     vi.mocked(invoke).mock.calls.map(([command]) => command),
   ).not.toContain("identity_legacy_available");
+  identity.dispose();
+});
+
+it("a self-hosted owner creates a key before any server knows it and opens the app without a relay read", async () => {
+  const relay = landingRelay();
+  const identity = createIdentity();
+  const user = userEvent.setup();
+  render(
+    <Welcome
+      selfHosted
+      identity={identity}
+      communities={noJoin}
+      invites={invites}
+    >
+      <p>Signed in</p>
+    </Welcome>,
+  );
+  await user.click(
+    await screen.findByRole("button", { name: "Set up my workspace" }),
+  );
+  expect(
+    screen.getByRole("heading", { name: "Create your key" }),
+  ).toBeVisible();
+  expect(invoke).not.toHaveBeenCalledWith("identity_create", {});
+  await user.click(screen.getByRole("button", { name: "Create my key" }));
+  expect(await screen.findByText("Signed in")).toBeVisible();
+  expect(invoke).toHaveBeenCalledWith("identity_create", {});
+  expect(identity.snapshot()).toEqual({ status: "ready", viewer });
+  expect(relay.relayCalls).toEqual([]);
+  identity.dispose();
+});
+
+it("a self-hosted first run returns from either choice to the start, and an owner's key import returns to Create your key", async () => {
+  landingRelay();
+  const identity = createIdentity();
+  const user = userEvent.setup();
+  render(
+    <Welcome
+      selfHosted
+      identity={identity}
+      communities={noJoin}
+      invites={invites}
+    >
+      <p>Signed in</p>
+    </Welcome>,
+  );
+  await user.click(
+    await screen.findByRole("button", { name: "I have an invite" }),
+  );
+  await user.click(screen.getByRole("button", { name: "Back" }));
+  await user.click(screen.getByRole("button", { name: "Set up my workspace" }));
+  await user.click(screen.getByRole("button", { name: "Use an existing key" }));
+  expect(screen.getByLabelText("Private key (nsec)")).toBeVisible();
+  await user.click(screen.getByRole("button", { name: "Back" }));
+  expect(
+    screen.getByRole("heading", { name: "Create your key" }),
+  ).toBeVisible();
+  await user.click(screen.getByRole("button", { name: "Back" }));
+  expect(
+    screen.getByRole("button", { name: "Set up my workspace" }),
+  ).toBeVisible();
+  expect(invoke).not.toHaveBeenCalledWith("identity_create", {});
   identity.dispose();
 });
 
