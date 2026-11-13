@@ -1,3 +1,29 @@
+# Set up Workrooms on my Mac
+
+**For the coding agent receiving this GitHub link:** install the course desktop app on the user's Mac. Run the commands yourself in a local macOS session. If the chat is running on a cloud machine, help the user switch to a local session first.
+
+1. Clone this repository into a fresh folder at the revision in the supplied GitHub link. For a commit link, verify that `git rev-parse HEAD` matches that commit before building. Keep this checkout so the user owns a local copy of the source.
+2. Check `xcode-select -p`. If the Command Line Tools are missing, run `xcode-select --install` and let the user complete the macOS prompt. Use the repository's Hermit tools, which select its pinned Rust, Node and pnpm versions.
+3. From the checkout, run the following. The desktop build can finish before the user has a community address.
+
+```sh
+bin/rustup toolchain install && ./scripts/bravebrand-client.sh --rehearsal
+```
+
+4. After a successful build, install the app. On a fresh Mac use the following commands. If Applications already contains a bundle at that name, verify its identifier first and move the old bundle aside before copying. Use the user's Applications folder if the system folder requires administrator access.
+
+```sh
+app="Brave Agent Workrooms Rehearsal.app"
+bundle="target/debug/bundle/macos/$app"
+codesign --verify --deep --strict "$bundle" &&
+  ditto "$bundle" "/Applications/$app" &&
+  codesign --verify --deep --strict "/Applications/$app"
+```
+
+5. Tell the user where the icon is and let them open it. At **Connect to your VPS**, they can paste a private invite from an existing community or enter its HTTPS address. A new identity needs admission to an invite-only community. Have the user create their own identity and handle any provider sign-in in the app. Keep private invites and recovery keys out of the chat.
+
+Docker, Cloudflare and a VPS are unnecessary for this desktop installation. The community stores shared messages on its relay. This revision connects to an existing relay and does not start one on the Mac.
+
 # BraveBrand self-hosted client
 
 Build the local macOS client with `scripts/bravebrand-client.sh`. Open `target/debug/bundle/macos/BraveBrand.app`. Enter your relay’s HTTPS address or invite link and choose **Create my identity**. Your server controls admission. For an invite-only relay, use an invite or have the administrator admit the public key shown during setup. Save a private recovery copy from **Settings → Identity**. This build stores its identity separately from Buzz and does not configure a Builderlab sign-in server.
