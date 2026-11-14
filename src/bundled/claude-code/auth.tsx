@@ -7,12 +7,17 @@
 //
 // Builds can replace this one file with another way to sign in, so the rest
 // of the plugin reaches authentication only through its exports: keep their
-// names and shapes when changing it.
+// names and shapes when changing it. The optional ClaudeAuth.Settings surface
+// belongs to this authentication method; other implementations may omit it.
 import { invoke, isTauri } from "@tauri-apps/api/core";
-import { useEffect, useState, useSyncExternalStore } from "react";
+import {
+  type ComponentType,
+  useEffect,
+  useState,
+  useSyncExternalStore,
+} from "react";
+import { ApiKeyForm } from "../../features/settings/ApiKeyForm";
 import { Button } from "../../shared/design-system/ui/Button";
-import { Field } from "../../shared/design-system/ui/Field";
-import { Input } from "../../shared/design-system/ui/Input";
 import inlineStyles from "../../shared/InlineReference.module.css";
 import type { AgentStore } from "../../features/agents/store";
 import { ENV, type Spawn } from "./claude";
@@ -63,22 +68,22 @@ async function output(spawn: Spawn, id: string) {
   return stdout;
 }
 
-/** The key's native store (`claude_key.rs`): the OS credential store,
- * which hands the key to the Claude processes that ask for it. Nothing
- * here reads it back; native code relies on that, as it gives the key to
- * `claude-sh`, which runs whatever script it is given. */
+/** The native store never returns saved credentials to setup or Settings.
+ * Native code injects the key into the Claude processes that request it. */
 const nativeStore = ():
   | Readonly<{
       /** Whether a key is saved. */
       status(): Promise<boolean>;
-      /** Saves the key; it is never read back. */
+      /** Saves the key without echoing it. */
       save(key: string): Promise<void>;
+      clear(): Promise<void>;
     }>
   | undefined =>
   isTauri()
     ? {
         status: async () => (await invoke("claude_api_key_status")) === true,
         save: (value) => invoke("claude_api_key_set", { value }),
+        clear: () => invoke("claude_api_key_clear"),
       }
     : undefined;
 
@@ -206,6 +211,18 @@ export class ClaudeAuth {
     }
   }
 
+  /** No key card of its own in Settings: this build signs in or takes a key
+   * in one place, Claude's row in Agent setup, which also switches between
+   * them. */
+  get Settings():
+    | ComponentType<{
+        setup: ClaudeSetup;
+        active(): boolean;
+      }>
+    | undefined {
+    return undefined;
+  }
+
   /** Told when the credentials change, so running sessions start again. */
   subscribe = (listener: () => void) => {
     this.listeners.add(listener);
@@ -274,6 +291,19 @@ export class ClaudeAuth {
     // A key saved is the one to use.
     await this.use("api-key");
     return "Saved the Anthropic API key.";
+  }
+
+  /** Removes the saved key and retires sessions using it through the same
+   * credential-change notification as replacement. */
+  async clear() {
+    const store = this.store;
+    if (!store) throw new Error("Claude runs only in the desktop app");
+    try {
+      await store.clear();
+    } finally {
+      this.saved = undefined;
+    }
+    for (const listener of this.listeners) listener();
   }
 
   /** `spawn`, starting each `claude` the chosen way: with the saved key,
@@ -377,13 +407,16 @@ function UseKey({ setup }: { setup: ClaudeSetup }) {
 export function SignIn({
   setup,
   disabled = false,
-  variant = "full",
   onSaved,
+  active,
+  onSavingChange,
 }: {
   setup: ClaudeSetup;
   disabled?: boolean;
   variant?: "full" | "compact";
   onSaved?: (() => void) | undefined;
+  active?: (() => boolean) | undefined;
+  onSavingChange?: ((saving: boolean) => void) | undefined;
 }) {
   return (
     <div className="grid gap-3">
@@ -396,8 +429,9 @@ export function SignIn({
       <KeyForm
         setup={setup}
         disabled={disabled}
-        compact={variant === "compact"}
         onSaved={onSaved}
+        active={active}
+        onSavingChange={onSavingChange}
       />
     </div>
   );
@@ -481,15 +515,17 @@ export function Missing({
 function KeyForm({
   setup,
   disabled: off = false,
-  compact = false,
   replace = false,
   onSaved,
+  active = () => true,
+  onSavingChange,
 }: {
   setup: ClaudeSetup;
   disabled?: boolean;
-  compact?: boolean;
   replace?: boolean;
   onSaved?: (() => void) | undefined;
+  active?: (() => boolean) | undefined;
+  onSavingChange?: ((saving: boolean) => void) | undefined;
 }) {
   const [key, setKey] = useState("");
   const [saving, setSaving] = useState<AbortController>();
@@ -502,9 +538,10 @@ function KeyForm({
   // Closing the form cancels a save.
   useEffect(() => () => saving?.abort(), [saving]);
   const save = async () => {
-    if (!key.trim() || saving || disabled) return;
+    if (!active() || !key.trim() || saving || disabled) return;
     const controller = new AbortController();
     setSaving(controller);
+    onSavingChange?.(true);
     setSaved(undefined);
     try {
       const text = await setup.auth.save(key.trim(), controller.signal);
@@ -517,45 +554,25 @@ function KeyForm({
         setSaved({ ok: false, text: message(error) });
     } finally {
       setSaving(undefined);
+      onSavingChange?.(false);
     }
   };
   return (
-    // Not a form: it sits inside agent creation's and Settings' own.
-    <div className="grid gap-2" aria-busy={saving ? true : undefined}>
-      <Field
-        label={replace ? "Replace API key" : "Anthropic API key"}
-        {...(replace && {
-          description:
-            "Create a key at console.anthropic.com. Buzz keeps it securely on this computer and gives it only to Claude, so commands your Claude agents run can read it.",
-        })}
-      >
-        <Input
-          type="password"
-          autoComplete="off"
-          value={key}
-          readOnly={!!saving}
-          aria-disabled={saving || disabled ? true : undefined}
-          onValueChange={setKey}
-          onKeyDown={(event) => {
-            if (event.key !== "Enter" || event.nativeEvent.isComposing) return;
-            event.preventDefault();
-            void save();
-          }}
-        />
-      </Field>
-      <div className="flex flex-wrap items-center gap-3">
-        <Button
-          type="button"
-          {...(!replace && { variant: "prominent" as const })}
-          size={compact ? "sm" : "md"}
-          disabled={disabled || !key.trim()}
-          focusableWhenDisabled
-          loading={!!saving}
-          onClick={() => void save()}
-        >
-          Save key
-        </Button>
-        {saved && (
+    <ApiKeyForm
+      label={replace ? "Replace API key" : "Anthropic API key"}
+      description={
+        replace
+          ? "Create a key at console.anthropic.com. Buzz keeps it securely on this computer and gives it only to Claude, so commands your Claude agents run can read it."
+          : undefined
+      }
+      value={key}
+      onValueChange={setKey}
+      onSave={() => void save()}
+      disabled={disabled}
+      saving={!!saving}
+      variant={replace ? "subtle" : "prominent"}
+      feedback={
+        saved && (
           <p
             role={saved.ok ? "status" : "alert"}
             className={
@@ -564,8 +581,8 @@ function KeyForm({
           >
             {saved.text}
           </p>
-        )}
-      </div>
-    </div>
+        )
+      }
+    />
   );
 }
