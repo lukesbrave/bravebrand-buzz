@@ -72,6 +72,8 @@ They open Docker Desktop once. Accepting Docker's terms is theirs to do; it is f
 
 Then two settings on one page, so the workspace comes back by itself after the computer restarts and Docker stays out of their way. In Docker's window: the **gear icon** at the top right → **General** → tick **Start Docker Desktop when you sign in to your computer**, untick **Open Docker Dashboard when Docker Desktop starts** → **Apply**. With the second one off, Docker starts quietly in the background and only its whale icon shows; left on, Docker's window opens each time the computer starts.
 
+Say why before you ask, in one sentence: "Your workspace lives inside Docker, so if Docker is not running, the app cannot find your workspace. This setting starts Docker by itself whenever you turn your computer on, so your workspace is always there when you open the app." It is a recommendation, not a requirement. If they would rather not, carry on: tell them their workspace will be off after a restart until they open Docker themselves, and that opening Docker is all it takes to bring it back.
+
 Fetch the workspace software (about 1.3 GB, once). It is safe to run before a key exists, and it tells you if the start-at-login setting is still off:
 
 ```sh
