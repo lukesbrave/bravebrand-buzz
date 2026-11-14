@@ -2,7 +2,7 @@
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { cleanup, render, screen } from "@testing-library/react";
-import { afterEach, expect, it } from "vitest";
+import { afterEach, expect, it, vi } from "vitest";
 import { OnboardingScreen } from "./OnboardingScreen";
 
 afterEach(cleanup);
@@ -17,6 +17,32 @@ it("puts first-run card steps in the BraveBrand scope with the Digital Home mark
   expect(main.getAttribute("data-onboarding-scope")).toBe("");
   expect(screen.getByRole("img", { name: "Digital Home" })).toBeTruthy();
   expect(screen.queryByRole("img", { name: "Buzz" })).toBeNull();
+});
+
+it("moves the mark clear of the macOS window buttons, and only there", () => {
+  const step = () =>
+    render(
+      <OnboardingScreen labelledBy="t" intro={<h1 id="t">Welcome</h1>}>
+        {null}
+      </OnboardingScreen>,
+    );
+  step();
+  const mark = () => screen.getByRole("img", { name: "Digital Home" });
+  expect(mark().hasAttribute("data-mac-window")).toBe(false);
+  cleanup();
+  // The desktop app on a Mac: macOS draws its buttons over the top-left corner.
+  const host = globalThis as { isTauri?: boolean };
+  host.isTauri = true;
+  const platform = vi
+    .spyOn(navigator, "platform", "get")
+    .mockReturnValue("MacIntel");
+  try {
+    step();
+    expect(mark().getAttribute("data-mac-window")).toBe("true");
+  } finally {
+    platform.mockRestore();
+    delete host.isTauri;
+  }
 });
 
 it("leaves the Buzz welcome variant outside the scope", () => {

@@ -56,6 +56,7 @@ export function OnboardingScreen({
             className={styles.cornerMark}
             role="img"
             aria-label="Digital Home"
+            data-mac-window={macDesktop || undefined}
           />
         )}
         {(macDesktop || integratedWindowControls) && <WindowControls />}

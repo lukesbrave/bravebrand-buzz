@@ -448,6 +448,12 @@
   height: calc(var(--space-8) + var(--space-3));
   background: url("/first-run-mark.svg") center / contain no-repeat;
 }
+/* macOS draws its window buttons over this corner: 16px in, 24px down and
+   about 52px wide. There the mark sits to their right, level with them. */
+.cornerMark[data-mac-window] {
+  top: var(--space-2);
+  left: calc(var(--space-8) * 2 + var(--space-6));
+}
 :root[data-color-mode="dark"] .cornerMark {
   background-image: url("/first-run-mark-dark.svg");
 }
