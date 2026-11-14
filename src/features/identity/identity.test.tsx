@@ -2224,12 +2224,16 @@ it("a self-hosted owner creates a key before any server knows it and opens the a
       <p>Signed in</p>
     </Welcome>,
   );
-  await user.click(
-    await screen.findByRole("button", { name: "Set up my workspace" }),
-  );
+  const start = await screen.findByRole("button", {
+    name: "Set up my workspace",
+  });
+  // The Welcome screen alone credits where the code came from.
+  expect(screen.getByText("Built on Buzz by Block")).toBeVisible();
+  await user.click(start);
   expect(
     screen.getByRole("heading", { name: "Create your key" }),
   ).toBeVisible();
+  expect(screen.queryByText("Built on Buzz by Block")).toBeNull();
   expect(invoke).not.toHaveBeenCalledWith("identity_create", {});
   await user.click(screen.getByRole("button", { name: "Create my key" }));
   expect(await screen.findByText("Signed in")).toBeVisible();

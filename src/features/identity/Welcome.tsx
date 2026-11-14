@@ -1287,7 +1287,8 @@ export function Welcome({
   ) {
     if (selfHosted && !role)
       return (
-        <WireframeScreen key="start">
+        // Where the code came from, not an endorsement: keep the words exact.
+        <WireframeScreen key="start" footnote="Built on Buzz by Block">
           <div>
             <h1
               id="welcome-title"

@@ -16,11 +16,14 @@ export function OnboardingScreen({
   welcome = false,
   intro,
   children,
+  footnote,
 }: {
   labelledBy: string;
   welcome?: boolean;
   intro: ReactNode;
   children: ReactNode;
+  /** A quiet line beneath the card, such as the Welcome screen's credit. */
+  footnote?: ReactNode;
 }) {
   const introPhase = useWelcomeIntro(welcome);
   const macDesktop = isTauri() && /Mac/i.test(navigator.platform);
@@ -61,9 +64,16 @@ export function OnboardingScreen({
         {welcome ? (
           content
         ) : (
-          <Panel as="section" shape="card">
-            <div className={styles.cardContent}>{content}</div>
-          </Panel>
+          <>
+            <Panel as="section" shape="card">
+              <div className={styles.cardContent}>{content}</div>
+            </Panel>
+            {footnote && (
+              <p className={`${styles.footnote} text-body-sm text-subtle`}>
+                {footnote}
+              </p>
+            )}
+          </>
         )}
       </div>
     </main>

@@ -2253,8 +2253,10 @@ workspace and the rest of the setup flow) carry `data-onboarding-scope` on
 OnboardingScreen's root. In that scope `surface-onboarding` is BraveBrand sky
 (#bbdcef) in light mode and ink (#16314c) in dark mode, the prominent action is
 ink with white text (sky with navy text in dark mode), and dark mode resolves the
-neutral roles on a navy ramp. The corner shows the BB mark in the prominent
-color. This is the documented exception to neutral primary actions, and it ends
+neutral roles on a navy ramp. The corner shows the first-run mark
+(`public/first-run-mark.png`, a single-color mask) in the prominent color. The
+Welcome step alone carries a `text-subtle` footnote beneath its card, "Built on
+Buzz by Block" (5.4:1 on sky, 8.6:1 on ink). This is the documented exception to neutral primary actions, and it ends
 with first run: the shell and everything after it keep Buzz's roles. The
 `--brand-*` palette is read only by `surface-onboarding` and the scope blocks;
 `OnboardingScreen.test.tsx` guards that boundary. The scope's pairs were measured

@@ -429,8 +429,15 @@
   margin-top: 0;
 }
 
-/* BraveBrand's BB mark, drawn in the first-launch scope's prominent color
-   (ink on sky, sky on navy). */
+/* A quiet line beneath a first-run card (the Welcome screen's credit). */
+.footnote {
+  margin: var(--space-4) 0 0;
+  text-align: center;
+}
+
+/* The first-run corner mark (BraveBrand's BB today), drawn in the scope's
+   prominent color: ink on sky, sky on navy. Swap the mark by replacing
+   public/first-run-mark.png with another single-color mark on transparency. */
 .cornerMark {
   position: absolute;
   top: var(--space-6);
@@ -438,7 +445,7 @@
   height: calc(var(--space-6) + var(--space-half));
   aspect-ratio: 545 / 420;
   background: var(--affordance-prominent);
-  mask: url("/bravebrand-mark.png") center / contain no-repeat;
+  mask: url("/first-run-mark.png") center / contain no-repeat;
 }
 @media (forced-colors: active) {
   .cornerMark {

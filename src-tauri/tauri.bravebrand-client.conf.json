@@ -11,5 +11,8 @@
         "schemes": ["bravebrand"]
       }
     }
+  },
+  "bundle": {
+    "copyright": "Built on Buzz by Block\nBased on Buzz 1.0.2"
   }
 }
