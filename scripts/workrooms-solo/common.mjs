@@ -20,8 +20,11 @@ import { fileURLToPath } from "node:url";
 
 const windows = process.platform === "win32";
 
-/** The name resolves to this computer everywhere, with nothing to register. */
-export const HOST = "workrooms.localhost";
+/**
+ * The one name every system resolves to itself. A name under .localhost reads
+ * better but Windows does not resolve it (checked on a hosted Windows runner).
+ */
+export const HOST = "localhost";
 export const home =
   process.env.WORKROOMS_HOME ||
   (windows

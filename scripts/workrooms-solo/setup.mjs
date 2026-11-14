@@ -12,7 +12,7 @@
 // key is read or printed. Rerun the same command after an interruption, after
 // a Docker update, or when the app cannot reach the workspace.
 //
-// The second run makes a certificate for workrooms.localhost and asks the
+// The second run makes a certificate for localhost and asks the
 // system to trust it: macOS asks the person for their password or Touch ID,
 // Windows shows a security warning to confirm. WORKROOMS_TRUST=skip leaves
 // that out, for automated tests only.
