@@ -11,11 +11,18 @@ export function WireframePanel({ children }: { children: ReactNode }) {
 }
 
 /** A first-run page titled by its `welcome-title` heading. */
-export function WireframeScreen({ children }: { children: ReactNode }) {
+export function WireframeScreen({
+  children,
+  footnote,
+}: {
+  children: ReactNode;
+  footnote?: ReactNode;
+}) {
   return (
     <OnboardingScreen
       labelledBy="welcome-title"
       intro={<div className={styles.flow}>{children}</div>}
+      footnote={footnote}
     >
       {null}
     </OnboardingScreen>

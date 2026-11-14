@@ -429,11 +429,28 @@
   margin-top: 0;
 }
 
+/* A quiet line beneath a first-run card (the Welcome screen's credit). */
+.footnote {
+  margin: var(--space-4) 0 0;
+  text-align: center;
+}
+
+/* The first-run corner mark (BraveBrand's Digital Home house, one color with
+   the doorway open), drawn in the scope's prominent color: ink on sky, sky on
+   navy. Swap the mark by replacing public/first-run-mark.png with another
+   single-color mark on transparency. */
 .cornerMark {
   position: absolute;
   top: var(--space-6);
   left: var(--space-6);
-  width: calc(var(--space-6) + var(--space-8));
-  height: calc(var(--space-6) + var(--space-8));
-  object-fit: contain;
+  height: calc(var(--space-6) + var(--space-1h));
+  aspect-ratio: 1;
+  background: var(--affordance-prominent);
+  mask: url("/first-run-mark.png") center / contain no-repeat;
+}
+@media (forced-colors: active) {
+  .cornerMark {
+    forced-color-adjust: none;
+    background: canvastext;
+  }
 }

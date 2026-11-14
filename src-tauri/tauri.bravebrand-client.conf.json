@@ -11,5 +11,15 @@
         "schemes": ["bravebrand"]
       }
     }
+  },
+  "bundle": {
+    "copyright": "Built on Buzz by Block\nBased on Buzz 1.0.2",
+    "icon": [
+      "icons/digital-home/32x32.png",
+      "icons/digital-home/128x128.png",
+      "icons/digital-home/128x128@2x.png",
+      "icons/digital-home/icon.icns",
+      "icons/digital-home/icon.ico"
+    ]
   }
 }
