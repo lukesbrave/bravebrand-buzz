@@ -1,0 +1,388 @@
+// Shared by setup.mjs, backup.mjs and restore.mjs: where the workspace on this
+// Mac keeps its settings, how Docker is reached, the certificate, and the
+// checks that prove the workspace answers as itself.
+import { execFileSync, spawnSync } from "node:child_process";
+import { X509Certificate } from "node:crypto";
+import {
+  chmodSync,
+  copyFileSync,
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
+import { request } from "node:https";
+import { homedir, tmpdir } from "node:os";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
+
+/** The name resolves to this Mac on every Mac, with nothing to register. */
+export const HOST = "workrooms.localhost";
+export const home =
+  process.env.WORKROOMS_HOME ||
+  join(homedir(), "Library/Application Support/Workrooms Local Workspace");
+export const project = process.env.WORKROOMS_PROJECT || "workrooms";
+export const settingsFile = join(home, ".env");
+export const certs = join(home, "certs");
+export const IMAGE =
+  "ghcr.io/block/buzz@sha256:690016ca465e439e2c58213fdfe8a094073ddbe80de75baec74b0a39de54ab38";
+// Some registries serve a release by tag but reject a cold digest lookup.
+// Cache the tagged images. Compose still selects the reviewed digests.
+export const TAGS = [
+  "ghcr.io/block/buzz:sha-2c5c834",
+  "caddy:2-alpine",
+  "postgres:17-alpine",
+  "redis:7-alpine",
+  "pgsty/mc:RELEASE.2026-09-16T00-00-00Z",
+  "pgsty/silo:RELEASE.2026-09-16T00-00-00Z",
+];
+
+/** Already fetched for the database; also supplies tar for volume copies. */
+export const TOOLS = "postgres:17-alpine";
+
+export const fail = (message) => {
+  console.error(message);
+  process.exit(1);
+};
+export const sleep = (ms) => new Promise((done) => setTimeout(done, ms));
+
+const dockerApp = "/Applications/Docker.app";
+const dockerBin = `${dockerApp}/Contents/Resources/bin/docker`;
+const dockerPath = existsSync(dockerBin) ? dockerBin : "docker";
+const dockerEnv = (extra = {}) => ({
+  ...process.env,
+  ...extra,
+  PATH: `${dirname(dockerPath)}:${process.env.PATH}`,
+});
+
+/**
+ * Runs docker. `capture` returns stdout; `from` and `to` are open files used
+ * as its input and output; otherwise output goes to the terminal.
+ */
+export function docker(
+  args,
+  { capture = false, env, from, to, check = true } = {},
+) {
+  const result = spawnSync(dockerPath, args, {
+    stdio: [from ?? "ignore", to ?? (capture ? "pipe" : "inherit"), "inherit"],
+    env: dockerEnv(env),
+    encoding: "utf8",
+  });
+  if (result.error) {
+    if (!check) return undefined;
+    fail(`Could not run Docker: ${result.error.message}`);
+  }
+  if (result.status !== 0) {
+    if (!check) return undefined;
+    process.exit(result.status ?? 1);
+  }
+  return capture ? result.stdout : "";
+}
+
+const engineUp = () =>
+  spawnSync(dockerPath, ["info", "--format", "{{.ServerVersion}}"], {
+    stdio: "ignore",
+    env: dockerEnv(),
+  }).status === 0;
+
+/** Starts Docker Desktop if it is installed and stopped, then waits for it. */
+export async function ensureDocker() {
+  if (engineUp()) return;
+  if (!existsSync(dockerApp))
+    fail(
+      "Docker Desktop is not installed. Install it from https://www.docker.com/products/docker-desktop/ (Mac with Apple silicon), open it once so its owner can accept the terms, then run this again.",
+    );
+  console.log("Starting Docker Desktop…");
+  spawnSync("/usr/bin/open", ["-ga", dockerApp]);
+  for (let waited = 0; waited < 180; waited += 3) {
+    if (engineUp()) return;
+    await sleep(3_000);
+  }
+  fail(
+    "Docker Desktop did not finish starting. Open Docker from Applications, finish anything it asks for, then run this again.",
+  );
+}
+
+/** True when Docker Desktop is set to open when its owner signs in to the Mac. */
+export function dockerStartsAtLogin() {
+  try {
+    const file = join(
+      homedir(),
+      "Library/Group Containers/group.com.docker/settings-store.json",
+    );
+    return JSON.parse(readFileSync(file, "utf8")).AutoStart === true;
+  } catch {
+    return undefined;
+  }
+}
+
+export function readSettings() {
+  if (!existsSync(settingsFile)) return undefined;
+  return Object.fromEntries(
+    readFileSync(settingsFile, "utf8")
+      .trim()
+      .split("\n")
+      .map((line) => {
+        const at = line.indexOf("=");
+        return [line.slice(0, at), line.slice(at + 1)];
+      }),
+  );
+}
+
+export function writeSettings(values) {
+  mkdirSync(home, { recursive: true, mode: 0o700 });
+  writeFileSync(
+    settingsFile,
+    `${Object.entries(values)
+      .map(([key, value]) => `${key}=${value}`)
+      .join("\n")}\n`,
+    { mode: 0o600 },
+  );
+}
+
+/** The address lines of the settings for a port on this Mac. */
+export function addressSettings(port) {
+  const authority = `${HOST}:${port}`;
+  return {
+    BUZZ_DOMAIN: authority,
+    RELAY_URL: `wss://${authority}`,
+    BUZZ_MEDIA_BASE_URL: `https://${authority}/media`,
+    BUZZ_MEDIA_SERVER_DOMAIN: authority,
+    BUZZ_CORS_ORIGINS: `https://${authority}`,
+    WORKROOMS_PORT: String(port),
+  };
+}
+
+/** The workspace's files live beside its settings, so it keeps running if the
+ * source checkout moves. */
+export function placeFiles() {
+  mkdirSync(home, { recursive: true, mode: 0o700 });
+  const here = (name) => fileURLToPath(new URL(name, import.meta.url));
+  copyFileSync(
+    here("../local-community/compose.yml"),
+    join(home, "compose.yml"),
+  );
+  copyFileSync(here("./compose.solo.yml"), join(home, "compose.solo.yml"));
+  copyFileSync(here("./Caddyfile"), join(home, "Caddyfile"));
+}
+
+export function compose(args, options = {}) {
+  const settings = readSettings();
+  return docker(
+    [
+      "compose",
+      "-p",
+      project,
+      "--env-file",
+      settingsFile,
+      "-f",
+      join(home, "compose.yml"),
+      "-f",
+      join(home, "compose.solo.yml"),
+      ...args,
+    ],
+    { ...options, env: { ...settings, WORKROOMS_ENV: settingsFile } },
+  );
+}
+
+const leafFile = join(certs, "workspace.crt");
+const authorityFile = join(certs, "authority.crt");
+
+/** Days until the workspace's certificate expires, or 0 without one. */
+export function certificateDaysLeft() {
+  if (!existsSync(leafFile) || !existsSync(authorityFile)) return 0;
+  const until = new X509Certificate(readFileSync(leafFile)).validToDate;
+  return Math.floor((until.getTime() - Date.now()) / 86_400_000);
+}
+
+/**
+ * Makes the certificate for HOST. A one-off authority signs it and its private
+ * key is deleted before this returns, so the authority this Mac is later asked
+ * to trust can never vouch for any other name. macOS accepts at most 825 days.
+ */
+export function makeCertificate() {
+  const work = mkdtempSync(join(tmpdir(), "workrooms-cert-"));
+  const openssl = (args) =>
+    execFileSync("/usr/bin/openssl", args, { cwd: work, stdio: "pipe" });
+  try {
+    const made = new Date().toISOString().slice(0, 10);
+    // LibreSSL ignores -subj when the config sets prompt = no, so each
+    // certificate's name lives in its own config.
+    const config = (file, name, extensions) =>
+      writeFileSync(
+        join(work, file),
+        `[req]\ndistinguished_name = name\nprompt = no\n[name]\nCN = ${name}\n[extensions]\n${extensions}\n`,
+      );
+    config(
+      "authority.cnf",
+      `Workrooms on this Mac ${made}`,
+      "basicConstraints = critical, CA:TRUE, pathlen:0\nkeyUsage = critical, keyCertSign\nsubjectKeyIdentifier = hash",
+    );
+    config(
+      "workspace.cnf",
+      HOST,
+      `basicConstraints = critical, CA:FALSE\nkeyUsage = critical, digitalSignature\nextendedKeyUsage = serverAuth\nsubjectAltName = DNS:${HOST}\nauthorityKeyIdentifier = keyid`,
+    );
+    const key = (name) =>
+      openssl([
+        "ecparam",
+        "-name",
+        "prime256v1",
+        "-genkey",
+        "-noout",
+        "-out",
+        name,
+      ]);
+    key("authority.key");
+    openssl([
+      "req",
+      "-x509",
+      "-new",
+      "-key",
+      "authority.key",
+      "-sha256",
+      "-days",
+      "820",
+      "-config",
+      "authority.cnf",
+      "-extensions",
+      "extensions",
+      "-out",
+      "authority.crt",
+    ]);
+    key("workspace.key");
+    openssl([
+      "req",
+      "-new",
+      "-key",
+      "workspace.key",
+      "-config",
+      "workspace.cnf",
+      "-out",
+      "workspace.csr",
+    ]);
+    openssl([
+      "x509",
+      "-req",
+      "-in",
+      "workspace.csr",
+      "-CA",
+      "authority.crt",
+      "-CAkey",
+      "authority.key",
+      "-CAcreateserial",
+      "-sha256",
+      "-days",
+      "820",
+      "-extfile",
+      "workspace.cnf",
+      "-extensions",
+      "extensions",
+      "-out",
+      "workspace.crt",
+    ]);
+    rmSync(join(work, "authority.key"));
+    mkdirSync(certs, { recursive: true, mode: 0o700 });
+    for (const name of ["authority.crt", "workspace.crt", "workspace.key"])
+      copyFileSync(join(work, name), join(certs, name));
+    chmodSync(join(certs, "workspace.key"), 0o600);
+  } finally {
+    rmSync(work, { recursive: true, force: true });
+  }
+}
+
+/** True when this Mac's login trusts the workspace's certificate for HTTPS. */
+export function certificateTrusted() {
+  return (
+    spawnSync(
+      "/usr/bin/security",
+      ["verify-cert", "-c", leafFile, "-p", "ssl", "-n", HOST, "-L", "-q"],
+      { stdio: "ignore" },
+    ).status === 0
+  );
+}
+
+/** macOS asks the person at the Mac for their password or Touch ID. */
+export function trustCertificate() {
+  const keychain = join(homedir(), "Library/Keychains/login.keychain-db");
+  return (
+    spawnSync(
+      "/usr/bin/security",
+      [
+        "add-trusted-cert",
+        "-r",
+        "trustRoot",
+        "-p",
+        "ssl",
+        "-k",
+        keychain,
+        authorityFile,
+      ],
+      { stdio: "inherit" },
+    ).status === 0
+  );
+}
+
+/** One HTTPS request to the workspace, verified against its own authority. */
+export function reach(port, path, { method = "GET", headers, body } = {}) {
+  return new Promise((resolve, reject) => {
+    const call = request(
+      {
+        host: HOST,
+        port,
+        path,
+        method,
+        headers,
+        ca: readFileSync(authorityFile),
+        timeout: 10_000,
+      },
+      (response) => {
+        let text = "";
+        response.setEncoding("utf8");
+        response.on("data", (chunk) => {
+          text += chunk;
+        });
+        response.on("end", () =>
+          resolve({ status: response.statusCode, text }),
+        );
+      },
+    );
+    call.on("timeout", () => call.destroy(new Error("timed out")));
+    call.on("error", reject);
+    call.end(body);
+  });
+}
+
+/**
+ * What the app's first connection depends on, checked from this Mac: the
+ * address answers as this workspace, refuses an anonymous read and hides its
+ * operator routes.
+ */
+export async function checkWorkspace(port, identity) {
+  const origin = `https://${HOST}:${port}`;
+  let self;
+  for (let waited = 0; waited <= 60 && self !== identity; waited += 3) {
+    self = await reach(port, "/", {
+      headers: { Accept: "application/nostr+json" },
+    }).then(
+      (answer) => JSON.parse(answer.text).self,
+      () => undefined,
+    );
+    if (self !== identity) await sleep(3_000);
+  }
+  if (self !== identity)
+    fail(
+      `${origin} is not answering as this workspace. Run the same command again.`,
+    );
+  const anonymous = await reach(port, "/query", { method: "POST", body: "{}" });
+  if (anonymous.status !== 401)
+    fail(
+      `Expected ${origin} to refuse an anonymous read, got ${anonymous.status}.`,
+    );
+  const operator = await reach(port, "/operator/communities");
+  if (operator.status !== 404)
+    fail(`Expected ${origin} to hide operator routes, got ${operator.status}.`);
+  return origin;
+}

@@ -1,0 +1,9 @@
+# A workspace that only this Mac can reach. Layered over
+# ../local-community/compose.yml; setup.mjs places both beside this Caddyfile.
+services:
+  gateway:
+    # Loopback only: nothing on the network can connect.
+    ports: !override
+      - "127.0.0.1:${WORKROOMS_PORT:?set WORKROOMS_PORT}:8443"
+    volumes:
+      - ./certs:/certs:ro
