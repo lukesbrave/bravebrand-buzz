@@ -55,7 +55,7 @@ export function OnboardingScreen({
           <span
             className={styles.cornerMark}
             role="img"
-            aria-label="BraveBrand"
+            aria-label="Digital Home"
           />
         )}
         {(macDesktop || integratedWindowControls) && <WindowControls />}

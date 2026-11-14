@@ -22,11 +22,15 @@ App, favicon, and touch icons in `public/` and `src-tauri/icons/` are copied fro
 Block Buzz's `desktop/src-tauri/icons` ([source repository](https://github.com/block/buzz)).
 The shell palette and proportions are adapted from the supplied Buzz screenshots.
 
-`public/first-run-mark.png` is BraveBrand's BB mark, cut from the BraveBrand
-Team plugin's `assets/brand/brave-blue.png` as a transparent mask for the
-first-run corner. It replaces `public/welcome-bee.svg` there; the bee remains
-in Buzz's welcome artwork. No open-source licence is asserted for this
-BraveBrand brand asset.
+`public/first-run-mark.png` is BraveBrand's own Digital Home mark (the house
+from the Digital Home landing page's `one-person-agency/digital-home-mark.svg`),
+rendered in one color with the purple door removed, as a transparent mask for
+the first-run corner. It replaces `public/welcome-bee.svg` there; the bee
+remains in Buzz's welcome artwork. `src-tauri/icons/digital-home/` holds the
+BraveBrand builds' app icons: the same mark in full color on BraveBrand sky,
+generated from `app-icon.svg` there with `pnpm tauri icon`. Buzz's own icons in
+`src-tauri/icons/` are unchanged. No open-source licence is asserted for these
+BraveBrand brand assets.
 
 `public/bestie.png` is the snake portrait supplied by the user for the shell.
 

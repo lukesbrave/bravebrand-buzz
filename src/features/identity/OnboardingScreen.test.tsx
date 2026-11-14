@@ -7,7 +7,7 @@ import { OnboardingScreen } from "./OnboardingScreen";
 
 afterEach(cleanup);
 
-it("puts first-run card steps in the BraveBrand scope with the BB mark", () => {
+it("puts first-run card steps in the BraveBrand scope with the Digital Home mark", () => {
   render(
     <OnboardingScreen labelledBy="t" intro={<h1 id="t">Welcome</h1>}>
       {null}
@@ -15,7 +15,7 @@ it("puts first-run card steps in the BraveBrand scope with the BB mark", () => {
   );
   const main = screen.getByRole("main", { name: "Welcome" });
   expect(main.getAttribute("data-onboarding-scope")).toBe("");
-  expect(screen.getByRole("img", { name: "BraveBrand" })).toBeTruthy();
+  expect(screen.getByRole("img", { name: "Digital Home" })).toBeTruthy();
   expect(screen.queryByRole("img", { name: "Buzz" })).toBeNull();
 });
 
