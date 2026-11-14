@@ -1,13 +1,22 @@
-# Set up my Workrooms on this Mac
+# Set up my Workrooms on this computer
 
-**For the coding agent receiving this GitHub link.** The person in front of you is setting up a private workspace that they own, running entirely on their own Mac: the app's source code, the workspace itself, and a key that only their Mac holds. Nothing is rented and no domain is needed. They may never have used a terminal. You are their guide for the whole setup.
+**For the coding agent receiving this GitHub link.** The person in front of you is setting up a private workspace that they own, running entirely on their own computer: the app's source code, the workspace itself, and a key that only their computer holds. Nothing is rented and no domain is needed. They may never have used a terminal. You are their guide for the whole setup.
 
-This is the place to start. A workspace on this Mac is reachable from this Mac only. When they later want it on their phone or want teammates in it, it moves to a server: see **Take it with you** below. If they already know they want that today, use **Set up my Workrooms on a server** instead. If they are joining a workspace someone else set up, skip to **Joining with an invite**.
+This is the place to start. A workspace set up this way is reachable from this computer only. When they later want it on their phone or want teammates in it, it moves to a server: see **Take it with you** below. If they already know they want that today, use **Set up my Workrooms on a server** instead. If they are joining a workspace someone else set up, skip to **Joining with an invite**.
+
+Which computers, and how far each has been tested. Tell them where theirs stands before you begin:
+
+| Computer | Where it stands |
+| --- | --- |
+| Mac with Apple silicon | The route this guide was built and tested on. |
+| Mac with an Intel processor | The same steps with two differences, both marked **On an Intel Mac**: the build command in step 1 and the Docker download in step 2. Nobody has yet run this guide on an Intel Mac. |
+| Windows 10 or 11, 64-bit | The steps marked **On Windows**. The certificate step has been checked on a hosted Windows machine; nobody has yet run this guide on a Windows PC. Expect to solve a snag or two together. On Windows the app offers **Goose** and **Pi** agents only: Claude and Codex agents are switched off outside macOS and Linux, in Buzz itself as well as in this fork. Say so before they plan around a Claude or ChatGPT subscription. |
 
 How to guide:
 
-- Run every command yourself, in a local macOS session. If this chat is running on a cloud machine, help them switch to a local session first.
-- Open by telling them the plan: five steps, you do most of them, and they do three small things (get Docker ready, create their key, type their Mac password once).
+- Run every command yourself, in a local session on their computer: Terminal on a Mac, PowerShell on Windows. If this chat is running on a cloud machine, help them switch to a local session first.
+- Commands are written for a Mac. On Windows, type `node` wherever this guide writes `bin/node`; anything else that differs is marked **On Windows** or **On an Intel Mac**.
+- Open by telling them the plan: five steps, you do most of them, and they do three small things (get Docker ready, create their key, approve one prompt from their computer).
 - Give one step at a time. Say which step it is ("Step 3 of 5"), what it does in plain words, and wait for their result before the next.
 - Use plain names, and teach the real term once: "your workspace", "Docker (the program that quietly runs your workspace's storage in the background)", "your key (it proves you are you, with no account or password)".
 - When a step finishes, say what they now own.
@@ -15,7 +24,7 @@ How to guide:
 - Whenever they need to paste something you produced, print all of it in its own code block at that moment. Never shorten it with "…" or point back to an earlier message.
 - Never ask for, read or print a private key, a password, a recovery copy, the workspace's settings file or a backup's contents. A private key starts with `nsec`. The only key they share with you starts with `npub`.
 
-They need an Apple silicon Mac with about 20 GB of free disk. That is all.
+They need about 20 GB of free disk on a Mac, or about 35 GB on Windows, where the build tools are larger. That is all.
 
 ## Step 1 of 5 · Start building the app
 
@@ -27,20 +36,44 @@ Check `xcode-select -p`. If the Command Line Tools are missing, run `xcode-selec
 bin/rustup toolchain install && ./scripts/bravebrand-client.sh --rehearsal
 ```
 
+**On an Intel Mac:** one of the pinned tools has no Intel version, so that command stops at once. Use this one instead; it does the same build:
+
+```sh
+bin/rustup toolchain install && bin/node scripts/bravebrand-client.mjs --rehearsal
+```
+
+**On Windows:** the pinned tools in `bin/` do not run on Windows, so install the build tools first. Each one may show a Windows permission window, which they approve. Git comes first, because it fetches the repository:
+
+```powershell
+winget install --id Git.Git -e
+winget install --id Microsoft.VisualStudio.2022.BuildTools -e --override "--passive --wait --add Microsoft.VisualStudio.Workload.VCTools --includeRecommended"
+winget install --id Rustlang.Rustup -e
+winget install --id OpenJS.NodeJS.LTS -e
+```
+
+Open a new PowerShell window so the new tools are found, and check that `node --version` reports 24 or newer. Clone as above, then start the build in the background from the repository folder:
+
+```powershell
+node scripts/bravebrand-client.mjs --rehearsal
+```
+
 ## Step 2 of 5 · Get Docker ready
 
-The workspace keeps its messages and files in a database and a file store. Docker Desktop is the program that runs those in the background on their Mac. They never have to open it or understand it: its whale icon in the menu bar means the workspace is on.
+The workspace keeps its messages and files in a database and a file store. Docker Desktop is the program that runs those in the background on their computer. They never have to open it or understand it: its whale icon in the menu bar means the workspace is on.
 
-If `/Applications/Docker.app` is missing, they install it: at https://www.docker.com/products/docker-desktop/ they choose **Download for Mac – Apple Silicon**, open the downloaded file and drag **Docker** to **Applications**.
+If Docker Desktop is not installed, they install it from https://www.docker.com/products/docker-desktop/. On a Mac they choose **Download for Mac – Apple Silicon**, open the downloaded file and drag **Docker** to **Applications**.
 
-They open **Docker** from Applications once. Accepting Docker's terms is theirs to do; it is free for personal use and small businesses, and the terms shown say exactly who. They can keep the recommended settings and skip signing in: no Docker account is needed. Button names change between versions, so read the window with them.
+**On an Intel Mac:** the download is **Download for Mac – Intel Chip**. Everything after it is the same.
 
-Then one setting, so the workspace comes back by itself after the Mac restarts. In Docker's window: the **gear icon** at the top right → **General** → tick **Start Docker Desktop when you sign in to your computer** → **Apply**.
+**On Windows:** they choose **Download for Windows – AMD64**, run the installer, approve the Windows permission window and keep **Use WSL 2 instead of Hyper-V** ticked. Windows may ask to restart or sign out. If Docker then says WSL needs installing or updating, run `wsl --update` in an administrator PowerShell and let them approve it. The whale icon lives in the system tray at the bottom right, sometimes behind the **^** arrow.
+
+They open Docker Desktop once. Accepting Docker's terms is theirs to do; it is free for personal use and small businesses, and the terms shown say exactly who. They can keep the recommended settings and skip signing in: no Docker account is needed. Button names change between versions, so read the window with them.
+
+Then one setting, so the workspace comes back by itself after the computer restarts. In Docker's window: the **gear icon** at the top right → **General** → tick **Start Docker Desktop when you sign in to your computer** → **Apply**.
 
 Fetch the workspace software (about 1.3 GB, once). It is safe to run before a key exists, and it tells you if the start-at-login setting is still off:
 
 ```sh
-bin/pnpm install --frozen-lockfile
 bin/node scripts/workrooms-solo/setup.mjs
 ```
 
@@ -56,11 +89,13 @@ codesign --verify --deep --strict "$bundle" &&
   codesign --verify --deep --strict "/Applications/$app"
 ```
 
-Tell them where the icon is and let them open it. They choose **Set up my workspace**, then **Create my key**. The next screen shows a code with a **Copy** button. Ask them to paste it to you. It is their public key and starts with `npub1`. Their private key stays in their Mac's Keychain and is never shown.
+**On Windows:** the build leaves one installer in `target\debug\bundle\nsis`. Start it for them with `Start-Process (Get-ChildItem target\debug\bundle\nsis\*.exe).FullName`. The app was built on their own computer and carries no publisher's signature, so Windows may show **Windows protected your PC**: they choose **More info**, then **Run anyway**. The app is then in the Start menu as **Brave Agent Workrooms Rehearsal**.
+
+Tell them where the icon is and let them open it. They choose **Set up my workspace**, then **Create my key**. The next screen shows a code with a **Copy** button. Ask them to paste it to you. It is their public key and starts with `npub1`. Their private key is never shown: it stays in their Mac's Keychain, or in Windows Credential Manager.
 
 ## Step 4 of 5 · Start the workspace
 
-Before you run the command, tell them what is about to happen: "Your Mac will ask for your password or Touch ID once. The connection between the app and your workspace is encrypted even though both are on this Mac, and macOS is asking your permission to trust the certificate that does it. The certificate was just made on your Mac and only works for your own workspace." They approve the macOS window themselves.
+Before you run the command, tell them what is about to happen: "Your computer will ask you to approve one thing. The connection between the app and your workspace is encrypted even though both are on this computer, and you are being asked to trust the certificate that does it. The certificate was just made on your computer, and the key that could make another one has already been deleted." On a Mac the window asks for their password or Touch ID. **On Windows** it is a **Security Warning** about installing a certificate named *Workrooms on this computer*, and they choose **Yes**. They approve it themselves.
 
 Create the workspace with their public key as its owner:
 
@@ -68,30 +103,30 @@ Create the workspace with their public key as its owner:
 bin/node scripts/workrooms-solo/setup.mjs npub1…
 ```
 
-The command starts the workspace and checks it from this Mac: the address must answer as this workspace, refuse an anonymous read and hide its operator routes. If it stops, fix what it reports and run the same command again. It never replaces an existing workspace's owner.
+The command starts the workspace and checks it from this computer: the address must answer as this workspace, refuse an anonymous read and hide its operator routes. If it stops, fix what it reports and run the same command again. It never replaces an existing workspace's owner.
 
 ## Step 5 of 5 · Walk in
 
-Give them the address the command printed, in its own code block. It is `https://workrooms.localhost:18480` unless the command said otherwise. They paste it in the app, still open on **Connect your workspace**, and choose **Connect**. They complete their name and picture. Have them confirm that the members list shows them as **Owner**.
+Give them the address the command printed, in its own code block. It is `https://localhost:18480` unless the command said otherwise. They paste it in the app, still open on **Connect your workspace**, and choose **Connect**. They complete their name and picture. Have them confirm that the members list shows them as **Owner**.
 
 Then, before anything else:
 
-1. **Back up their key.** Say it this way: "The key you made on the Create my key screen is how you sign in as the owner. It only exists on this Mac. If this Mac is lost or replaced and you have no backup, nobody can get you back in." In the app they open **Settings → Identity**, find **Private key**, choose **Copy private key**, and paste it straight into their password manager. It starts with `nsec`. It must never be pasted into this chat.
+1. **Back up their key.** Say it this way: "The key you made on the Create my key screen is how you sign in as the owner. It only exists on this computer. If this computer is lost or replaced and you have no backup, nobody can get you back in." In the app they open **Settings → Identity**, find **Private key**, choose **Copy private key**, and paste it straight into their password manager. It starts with `nsec`. It must never be pasted into this chat.
 2. **Make the first backup.** Run the command under **Backups** below and tell them where the folder is.
-3. **Write their ownership note.** Create `My Workrooms.md` beside this checkout listing: the workspace address; where the source code is and the revision built; that the workspace runs in Docker on this Mac under the name `workrooms`, with its settings and certificate in `~/Library/Application Support/Workrooms Local Workspace`; where backups go; that the owner key is in their Mac's Keychain with a recovery copy they saved; that the certificate lasts about two years and running the step 4 command renews it. No secrets go in this file.
+3. **Write their ownership note.** Create `My Workrooms.md` beside this checkout listing: the workspace address; where the source code is and the revision built; that the workspace runs in Docker on this computer under the name `workrooms`; that its settings and certificate are in `~/Library/Application Support/Workrooms Local Workspace` on a Mac or `%LOCALAPPDATA%\Workrooms Local Workspace` on Windows; where backups go; that the owner key is in the Keychain or Credential Manager with a recovery copy they saved; that the certificate lasts about two years and running the step 4 command renews it. No secrets go in this file.
 
-They now own a working workspace and can hire their first agent.
+They now own a working workspace and can hire their first agent. On Windows that means a Goose or Pi agent, as the table at the top says.
 
 ## Keeping it running
 
-The workspace is on whenever Docker is running, and survives the Mac sleeping. If the app says it cannot reach the workspace:
+The workspace is on whenever Docker is running, and survives the computer sleeping. If the app says it cannot reach the workspace:
 
-1. Look for the whale icon in the menu bar. If it is missing, they open **Docker** from Applications and wait a minute.
+1. Look for the whale icon. If it is missing, they open Docker Desktop (Applications on a Mac, the Start menu on Windows) and wait a minute.
 2. If the app still cannot connect, run the step 4 command again with the same public key. It starts anything that stopped and repeats the checks.
 
 ## Backups
 
-Say this plainly: "Everything in your workspace now lives on this Mac. If the Mac is lost and there is no backup, the workspace is gone." There are two things to keep safe, and they are separate:
+Say this plainly: "Everything in your workspace now lives on this computer. If it is lost and there is no backup, the workspace is gone." There are two things to keep safe, and they are separate:
 
 - **The key** signs them in as owner. Its backup is the recovery copy in their password manager (step 5).
 - **The workspace** is every message, channel and uploaded file. Its backup is a folder this command makes:
@@ -100,21 +135,21 @@ Say this plainly: "Everything in your workspace now lives on this Mac. If the Ma
 bin/node scripts/workrooms-solo/backup.mjs
 ```
 
-The workspace pauses for a few seconds while the copy is taken. The folder appears in `~/Documents/Workrooms Backups`, named with the date. It is only a real backup once a copy is somewhere other than this Mac: an external drive, or a cloud folder they trust. It holds the workspace's private settings, so they keep it as private as the Mac itself. Suggest a rhythm they will keep, such as every Friday, and offer to run it whenever they ask.
+The workspace pauses for a few seconds while the copy is taken. The folder appears in **Documents**, inside **Workrooms Backups**, named with the date. It is only a real backup once a copy is somewhere other than this computer: an external drive, or a cloud folder they trust. It holds the workspace's private settings, so they keep it as private as the computer itself. Suggest a rhythm they will keep, such as every Friday, and offer to run it whenever they ask.
 
-A hired agent's own setup is kept by the app in the Mac's Library folder, not in this folder. A Time Machine backup of the whole Mac covers it.
+A hired agent's own setup is kept by the app in the computer's own app data, not in this folder. A backup of the whole computer covers it: Time Machine on a Mac, or the backup tool they use on Windows.
 
-To bring the workspace back on a new or wiped Mac: do steps 1 and 2, then restore the newest backup folder and trust the certificate when macOS asks:
+To bring the workspace back on a new or wiped computer: do steps 1 and 2, then restore the newest backup folder and approve the certificate prompt as in step 4:
 
 ```sh
 bin/node scripts/workrooms-solo/restore.mjs "/path/to/Workrooms backup 2026-11-14 0930"
 ```
 
-They install the app as in step 3, choose **Set up my workspace**, then **Use an existing key**, and paste their recovery copy into the app (never into this chat). They connect to the same address as before. Restore refuses to run on a Mac that already has a workspace, so it can never overwrite one.
+They install the app as in step 3, choose **Set up my workspace**, then **Use an existing key**, and paste their recovery copy into the app (never into this chat). They connect to the same address as before. Restore refuses to run where a workspace already exists, so it can never overwrite one, and a restore that stops partway cleans up after itself, so it can simply be run again.
 
 ## Take it with you
 
-A workspace on this Mac cannot be reached from a phone or by a teammate. When they want either, the workspace moves to a small server they rent, with an address on a domain they own. That is a later lesson; do not attempt it from this guide. The move starts from a backup made with the command above, so keeping a current backup is all they need to do to be ready. Until then, **Set up my Workrooms on a server** below creates a new, empty workspace on a server.
+A workspace on this computer cannot be reached from a phone or by a teammate. When they want either, the workspace moves to a small server they rent, with an address on a domain they own. That is a later lesson; do not attempt it from this guide. The move starts from a backup made with the command above, so keeping a current backup is all they need to do to be ready. Until then, **Set up my Workrooms on a server** below creates a new, empty workspace on a server.
 
 # Set up my Workrooms on a server
 
