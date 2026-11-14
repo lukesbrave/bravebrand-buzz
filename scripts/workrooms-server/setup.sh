@@ -36,7 +36,9 @@ docker compose version >/dev/null 2>&1 ||
 image="ghcr.io/block/buzz@sha256:690016ca465e439e2c58213fdfe8a094073ddbe80de75baec74b0a39de54ab38"
 # Some registries serve a release by tag but reject a cold digest lookup.
 # Cache the tagged images. Compose below still selects the reviewed digests.
-for tag in ghcr.io/block/buzz:sha-2c5c834 caddy:2-alpine postgres:17-alpine redis:7-alpine \
+for tag in ghcr.io/block/buzz:sha-2c5c834 caddy:2-alpine \
+	postgres:17-alpine@sha256:d3244e8ce3f165ee3c93d9c4a4b1d0fe48b3a89e2287b717fdcbbde92d405065 \
+	redis:7-alpine@sha256:7f7d30b7fdd09467bac58198a1f166dd69789d348d4fe859cccb20e0cf287fbe \
 	pgsty/mc:RELEASE.2026-09-16T00-00-00Z pgsty/silo:RELEASE.2026-09-16T00-00-00Z; do
 	docker image inspect "$tag" >/dev/null 2>&1 || docker pull "$tag"
 done

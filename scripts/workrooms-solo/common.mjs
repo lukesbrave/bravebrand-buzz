@@ -37,19 +37,25 @@ export const settingsFile = join(home, ".env");
 export const certs = join(home, "certs");
 export const IMAGE =
   "ghcr.io/block/buzz@sha256:690016ca465e439e2c58213fdfe8a094073ddbe80de75baec74b0a39de54ab38";
+// The database and the live-status store, at the exact builds compose.yml
+// names, so a later release under the same tag is never fetched in their place.
+const POSTGRES =
+  "postgres:17-alpine@sha256:d3244e8ce3f165ee3c93d9c4a4b1d0fe48b3a89e2287b717fdcbbde92d405065";
+const REDIS =
+  "redis:7-alpine@sha256:7f7d30b7fdd09467bac58198a1f166dd69789d348d4fe859cccb20e0cf287fbe";
 // Some registries serve a release by tag but reject a cold digest lookup.
 // Cache the tagged images. Compose still selects the reviewed digests.
 export const TAGS = [
   "ghcr.io/block/buzz:sha-2c5c834",
   "caddy:2-alpine",
-  "postgres:17-alpine",
-  "redis:7-alpine",
+  POSTGRES,
+  REDIS,
   "pgsty/mc:RELEASE.2026-09-16T00-00-00Z",
   "pgsty/silo:RELEASE.2026-09-16T00-00-00Z",
 ];
 
 /** Already fetched for the database; also supplies tar for volume copies. */
-export const TOOLS = "postgres:17-alpine";
+export const TOOLS = POSTGRES;
 
 export const fail = (message) => {
   console.error(message);
