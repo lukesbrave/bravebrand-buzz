@@ -39,6 +39,7 @@ export function OnboardingScreen({
       data-intro={introPhase}
       aria-labelledby={labelledBy}
       data-color-mode={welcome ? "light" : undefined}
+      data-onboarding-scope={welcome ? undefined : ""}
     >
       {welcome && <OnboardingBees entering={introPhase !== "done"} />}
       <header
@@ -48,11 +49,10 @@ export function OnboardingScreen({
         {...(macDesktop ? macTitleBarDragHandlers : {})}
       >
         {!welcome && (
-          <img
+          <span
             className={styles.cornerMark}
-            src="/welcome-bee.svg"
-            alt="Buzz"
-            draggable={false}
+            role="img"
+            aria-label="BraveBrand"
           />
         )}
         {(macDesktop || integratedWindowControls) && <WindowControls />}

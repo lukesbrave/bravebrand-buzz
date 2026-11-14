@@ -429,11 +429,20 @@
   margin-top: 0;
 }
 
+/* BraveBrand's BB mark, drawn in the first-launch scope's prominent color
+   (ink on sky, sky on navy). */
 .cornerMark {
   position: absolute;
   top: var(--space-6);
   left: var(--space-6);
-  width: calc(var(--space-6) + var(--space-8));
-  height: calc(var(--space-6) + var(--space-8));
-  object-fit: contain;
+  height: calc(var(--space-6) + var(--space-half));
+  aspect-ratio: 545 / 420;
+  background: var(--affordance-prominent);
+  mask: url("/bravebrand-mark.png") center / contain no-repeat;
+}
+@media (forced-colors: active) {
+  .cornerMark {
+    forced-color-adjust: none;
+    background: canvastext;
+  }
 }

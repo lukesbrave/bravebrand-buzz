@@ -22,6 +22,12 @@ App, favicon, and touch icons in `public/` and `src-tauri/icons/` are copied fro
 Block Buzz's `desktop/src-tauri/icons` ([source repository](https://github.com/block/buzz)).
 The shell palette and proportions are adapted from the supplied Buzz screenshots.
 
+`public/bravebrand-mark.png` is BraveBrand's BB mark, cut from the BraveBrand
+Team plugin's `assets/brand/brave-blue.png` as a transparent mask for the
+first-run corner. It replaces `public/welcome-bee.svg` there; the bee remains
+in Buzz's welcome artwork. No open-source licence is asserted for this
+BraveBrand brand asset.
+
 `public/bestie.png` is the snake portrait supplied by the user for the shell.
 
 `public/shell-gradient.png` is the background image supplied by Wes for the bento

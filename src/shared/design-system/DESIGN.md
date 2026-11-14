@@ -2248,6 +2248,19 @@ with -0.25px tracking, in rem units. This is local to the first-launch compositi
 it does not change the app-wide type ramp. Decorative motion stops for reduced
 motion and hidden documents; it never owns focus or blocks an action.
 
+BraveBrand's first-run card steps (Welcome, Create your key, Connect your
+workspace and the rest of the setup flow) carry `data-onboarding-scope` on
+OnboardingScreen's root. In that scope `surface-onboarding` is BraveBrand sky
+(#bbdcef) in light mode and ink (#16314c) in dark mode, the prominent action is
+ink with white text (sky with navy text in dark mode), and dark mode resolves the
+neutral roles on a navy ramp. The corner shows the BB mark in the prominent
+color. This is the documented exception to neutral primary actions, and it ends
+with first run: the shell and everything after it keep Buzz's roles. The
+`--brand-*` palette is read only by `surface-onboarding` and the scope blocks;
+`OnboardingScreen.test.tsx` guards that boundary. The scope's pairs were measured
+with the same APCA/WCAG code (white on ink 13.3:1, navy on sky 11.1:1, dark card
+metadata 7.3:1).
+
 ### Standalone account cards
 
 First-run setup uses `Panel shape="card"`, matching Builderlab/Auth0: content-sized, `radius-card` corners and `shadow-card` lift. Compose a 490px reading column with space-8 insets, title/body-sm typography, shared Field/Input controls and large capsule actions. Keep welcome artwork separate from these opaque setup cards.

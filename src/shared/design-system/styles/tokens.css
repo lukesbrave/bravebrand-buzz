@@ -66,9 +66,29 @@
   --red-11-light: #ce2c31;
   --neutral-status-ink: #ffffff;
 
-  /* Branded onboarding palette; dark mode adds the approved 30% black tint. */
-  --brand-chartreuse: #d7d72e;
-  --brand-chartreuse-dimmed: color-mix(in srgb, #d7d72e 70%, black);
+  /* BraveBrand first-launch palette: sky and ink from the BraveBrand Team
+     plugin, with a navy ramp for dark first-launch cards. Used only by
+     --surface-onboarding and the [data-onboarding-scope] block below; the
+     app after first launch keeps Buzz's palette. */
+  --brand-sky: #bbdcef;
+  --brand-sky-hover: #cde6f4;
+  --brand-sky-pressed: #a7d0e8;
+  --brand-ink: #16314c;
+  --brand-ink-hover: #213f5e;
+  --brand-ink-pressed: #0f2438;
+  --brand-navy-1: #08131f;
+  --brand-navy-2: #0b1a2a;
+  --brand-navy-3: #102337;
+  --brand-navy-4: #152b42;
+  --brand-navy-5: #1d3650;
+  --brand-navy-6: #26415c;
+  --brand-navy-7: #3b5670;
+  --brand-navy-8: #58728a;
+  --brand-navy-9: #7f96ab;
+  --brand-navy-10: #9bb3c3;
+  --brand-navy-11: #c3d2de;
+  --brand-navy-raised: #183047;
+  --brand-navy-hover: #1a3249;
   --magenta-1-light: #fffbfc;
   --magenta-2-light: #fff7fa;
   --magenta-3-light: #ffeef3;
@@ -1238,7 +1258,7 @@
   --border-floating-control: var(--border-prominent);
   --affordance-selected: var(--neutral-3);
   --affordance-disabled: var(--neutral-4);
-  --surface-onboarding: var(--brand-chartreuse);
+  --surface-onboarding: var(--brand-sky);
   --affordance-danger: var(--red-3);
   --affordance-danger-hover: var(--red-4);
   --affordance-danger-pressed: var(--red-5);
@@ -1254,6 +1274,7 @@
   --border-success-subtle: var(--green-6);
 }
 
+:root[data-color-mode="dark"] [data-onboarding-scope],
 :root[data-color-mode="dark"],
 .dark {
   --surface-message: var(--bubble-received);
@@ -1386,7 +1407,7 @@
   --border-floating-control: var(--neutral-9);
   --affordance-selected: var(--neutral-5);
   --affordance-disabled: var(--neutral-5);
-  --surface-onboarding: var(--brand-chartreuse-dimmed);
+  --surface-onboarding: var(--brand-ink);
   --affordance-danger: var(--red-3);
   --affordance-danger-hover: var(--red-4);
   --affordance-danger-pressed: var(--red-5);
@@ -1555,6 +1576,7 @@
   --rim-shade: #ffffff1f;
 }
 
+:root[data-color-mode="dark"] [data-onboarding-scope],
 :root[data-color-mode="dark"],
 .dark {
   --bg-app: var(--neutral-2);
@@ -1582,6 +1604,39 @@
 
   --rim-lit: #ffffff2e;
   --rim-shade: #ffffff0f;
+}
+
+/* BraveBrand first launch. OnboardingScreen's card steps (Welcome, Create
+   your key, Connect your workspace and the rest of first run) carry
+   data-onboarding-scope. Light mode changes only the prominent action;
+   dark mode also swaps the neutral ramp for navy, and the dark role blocks
+   above list this scope so its roles re-resolve on those steps. Nothing
+   outside first run carries the attribute, so the shell keeps Buzz's look. */
+:root:not([data-color-mode="dark"]) [data-onboarding-scope] {
+  --affordance-prominent: var(--brand-ink);
+  --affordance-prominent-hover: var(--brand-ink-hover);
+  --affordance-prominent-pressed: var(--brand-ink-pressed);
+}
+
+:root[data-color-mode="dark"] [data-onboarding-scope] {
+  --neutral-1: var(--brand-navy-1);
+  --neutral-2: var(--brand-navy-2);
+  --neutral-3: var(--brand-navy-3);
+  --neutral-4: var(--brand-navy-4);
+  --neutral-5: var(--brand-navy-5);
+  --neutral-6: var(--brand-navy-6);
+  --neutral-7: var(--brand-navy-7);
+  --neutral-8: var(--brand-navy-8);
+  --neutral-9: var(--brand-navy-9);
+  --neutral-10: var(--brand-navy-10);
+  --neutral-11: var(--brand-navy-11);
+  --neutral-raised: var(--brand-navy-raised);
+  --neutral-quiet-hover: var(--brand-navy-hover);
+  --neutral-navigation-quiet: var(--brand-navy-4);
+  --affordance-prominent: var(--brand-sky);
+  --affordance-prominent-hover: var(--brand-sky-hover);
+  --affordance-prominent-pressed: var(--brand-sky-pressed);
+  --text-on-prominent: var(--brand-navy-3);
 }
 
 /* ============================================================
