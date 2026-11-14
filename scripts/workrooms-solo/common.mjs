@@ -16,7 +16,6 @@ import {
 import { request } from "node:https";
 import { homedir, tmpdir } from "node:os";
 import { delimiter, dirname, join, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
 
 const windows = process.platform === "win32";
 
@@ -242,13 +241,20 @@ export function addressSettings(port) {
  * source checkout moves. */
 export function placeFiles() {
   mkdirSync(home, { recursive: true, mode: 0o700 });
-  const here = (name) => fileURLToPath(new URL(name, import.meta.url));
-  copyFileSync(
-    here("../local-community/compose.yml"),
-    join(home, "compose.yml"),
-  );
-  copyFileSync(here("./compose.solo.yml"), join(home, "compose.solo.yml"));
-  copyFileSync(here("./Caddyfile"), join(home, "Caddyfile"));
+  // Git on Windows may check these out with Windows line endings, which
+  // the programs reading them inside Docker need not accept.
+  for (const [source, name] of [
+    ["../local-community/compose.yml", "compose.yml"],
+    ["./compose.solo.yml", "compose.solo.yml"],
+    ["./Caddyfile", "Caddyfile"],
+  ])
+    writeFileSync(
+      join(home, name),
+      readFileSync(new URL(source, import.meta.url), "utf8").replaceAll(
+        "\r\n",
+        "\n",
+      ),
+    );
 }
 
 /** Removes only what this kit wrote, for a restore that did not finish. */

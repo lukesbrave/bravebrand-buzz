@@ -18,8 +18,9 @@ const windows = process.platform === "win32";
 const root = fileURLToPath(new URL("../", import.meta.url));
 
 // The pnpm version package.json names is installed with the npm beside this
-// Node into a folder of its own, which goes first on PATH, ahead of bin/pnpm
-// where that exists.
+// Node into a folder of its own, which goes first on PATH. This Node's own
+// folder comes next: bin/node is a Hermit launcher that puts bin/ back at the
+// front for everything it starts, and bin/pnpm is the tool that may not run.
 const tools = join(root, "target", "workrooms-tools");
 const launchers = windows ? tools : join(tools, "bin");
 const bin = join(root, "bin");
@@ -27,6 +28,7 @@ const env = {
   ...process.env,
   PATH: [
     launchers,
+    dirname(process.execPath),
     ...(!windows && existsSync(bin) ? [bin] : []),
     process.env.PATH,
   ].join(delimiter),
