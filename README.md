@@ -83,14 +83,14 @@ bin/node scripts/workrooms-solo/setup.mjs
 When the build finishes, install the app. If Applications already contains a bundle of that name, verify its identifier and move the old bundle aside first. Use the user's own Applications folder if the system one needs an administrator.
 
 ```sh
-app="Brave Agent Workrooms Rehearsal.app"
+app="Digital Home Workrooms.app"
 bundle="target/debug/bundle/macos/$app"
 codesign --verify --deep --strict "$bundle" &&
   ditto "$bundle" "/Applications/$app" &&
   codesign --verify --deep --strict "/Applications/$app"
 ```
 
-**On Windows:** the build leaves one installer in `target\debug\bundle\nsis`. Start it for them with `Start-Process (Get-ChildItem target\debug\bundle\nsis\*.exe).FullName`. The app was built on their own computer and carries no publisher's signature, so Windows may show **Windows protected your PC**: they choose **More info**, then **Run anyway**. The app is then in the Start menu as **Brave Agent Workrooms Rehearsal**.
+**On Windows:** the build leaves one installer in `target\debug\bundle\nsis`. Start it for them with `Start-Process (Get-ChildItem target\debug\bundle\nsis\*.exe).FullName`. The app was built on their own computer and carries no publisher's signature, so Windows may show **Windows protected your PC**: they choose **More info**, then **Run anyway**. The app is then in the Start menu as **Digital Home Workrooms**.
 
 Tell them where the icon is and let them open it. They choose **Set up my workspace**, then **Create my key**. The next screen shows a code with a **Copy** button. Ask them to paste it to you. It is their public key and starts with `npub1`. Their private key is never shown: it stays in their Mac's Keychain, or in Windows Credential Manager.
 
@@ -227,7 +227,7 @@ Then have them add the record the command printed. In Cloudflare: open the domai
 When the build finishes, install the app. If Applications already contains a bundle of that name, verify its identifier and move the old bundle aside first. Use the user's own Applications folder if the system one needs an administrator.
 
 ```sh
-app="Brave Agent Workrooms Rehearsal.app"
+app="Digital Home Workrooms.app"
 bundle="target/debug/bundle/macos/$app"
 codesign --verify --deep --strict "$bundle" &&
   ditto "$bundle" "/Applications/$app" &&
@@ -275,7 +275,7 @@ The app and server can be set up independently. If the app is already building o
 
 Build the local macOS client with `scripts/bravebrand-client.sh`. Open `target/debug/bundle/macos/BraveBrand.app`. Choose **I have an invite**, enter your relay’s HTTPS address or invite link and choose **Create my identity**. Your server controls admission. For an invite-only relay, use an invite or have the administrator admit the public key shown during setup. Save a private recovery copy from **Settings → Identity**. This build stores its identity separately from Buzz and does not configure a Builderlab sign-in server.
 
-To rehearse first launch on the same macOS login, run `scripts/bravebrand-client.sh --rehearsal` and open `target/debug/bundle/macos/Brave Agent Workrooms Rehearsal.app`. This separate installation owns its own identity, agents, plugin profile and URL scheme. Enter the new server’s HTTPS address or paste its invite into the app. Reopening the rehearsal app resumes that rehearsal. AI tools installed for the macOS user can still be available.
+To rehearse first launch on the same macOS login, run `scripts/bravebrand-client.sh --rehearsal` and open `target/debug/bundle/macos/Digital Home Workrooms.app`. This separate installation owns its own identity, agents, plugin profile and URL scheme. Enter the new server’s HTTPS address or paste its invite into the app. Reopening the rehearsal app resumes that rehearsal. AI tools installed for the macOS user can still be available.
 
 # BraveBrand Buzz pilot
 
