@@ -1,0 +1,94 @@
+name: Workrooms backups check
+
+# Evidence for the encrypted backup kit on machines nobody here owns: the age
+# tool opening this kit's files, and the Windows clipboard, Credential Manager
+# and Task Scheduler pieces. Throwaway: not for merging.
+on:
+  push:
+    branches: [codex/workrooms-backups-ci]
+
+permissions:
+  contents: read
+
+jobs:
+  windows:
+    name: Windows · age tool, clipboard, Credential Manager, Task Scheduler
+    runs-on: windows-2025
+    timeout-minutes: 30
+    env:
+      WORKROOMS_HOME: ${{ github.workspace }}\..\workrooms home with spaces
+      WORKROOMS_PROJECT: wr-ci
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 24.18.0
+      - name: Fetch the age tool
+        shell: pwsh
+        run: |
+          curl.exe -fsSL -o age.zip https://github.com/FiloSottile/age/releases/download/v1.3.2/age-v1.3.2-windows-amd64.zip
+          tar -xf age.zip
+          Get-ChildItem age
+          (Get-Command tar).Source; tar --version
+      - name: The age tool and this kit open each other's files
+        run: node .github/workrooms/backups-check.mjs interop age\age.exe
+      - name: Unit tests
+        continue-on-error: true
+        run: npx --yes vitest@5.0.4 run --root scripts/workrooms-solo backups
+      - name: Clipboard and Credential Manager
+        continue-on-error: true
+        run: node .github/workrooms/backups-check.mjs secrets
+      - name: Task Scheduler
+        continue-on-error: true
+        run: node .github/workrooms/backups-check.mjs schedule
+
+  linux:
+    name: Linux · age tool from the distribution
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 24.18.0
+      - run: sudo apt-get update -q && sudo apt-get install -y -q age
+      - run: node .github/workrooms/backups-check.mjs interop "$(command -v age)"
+      - name: The newest age tool as well
+        run: |
+          curl -fsSL -o age.tgz https://github.com/FiloSottile/age/releases/download/v1.3.2/age-v1.3.2-linux-amd64.tar.gz
+          tar -xzf age.tgz
+          node .github/workrooms/backups-check.mjs interop "$PWD/age/age"
+      - name: Unit tests
+        run: npx --yes vitest@5.0.4 run --root scripts/workrooms-solo backups
+
+  intel-mac:
+    name: Intel Mac · age tool, clipboard, Keychain, launchd
+    runs-on: macos-15-intel
+    timeout-minutes: 30
+    env:
+      WORKROOMS_HOME: ${{ github.workspace }}/../workrooms home with spaces
+      WORKROOMS_PROJECT: wr-ci
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 24.18.0
+      - run: |
+          uname -m; sw_vers -productVersion
+          curl -fsSL -o age.tgz https://github.com/FiloSottile/age/releases/download/v1.3.2/age-v1.3.2-darwin-amd64.tar.gz
+          tar -xzf age.tgz
+          node .github/workrooms/backups-check.mjs interop "$PWD/age/age"
+      - name: Unit tests
+        run: npx --yes vitest@5.0.4 run --root scripts/workrooms-solo backups
+      - name: Clipboard and Keychain
+        continue-on-error: true
+        run: node .github/workrooms/backups-check.mjs secrets
+      - name: launchd
+        continue-on-error: true
+        run: node .github/workrooms/backups-check.mjs schedule
