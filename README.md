@@ -22,7 +22,7 @@ How to guide:
 - When a step finishes, say what they now own.
 - Whenever you send them to a website or a window, give the direct link and say exactly where to click, in order.
 - Whenever they need to paste something you produced, print all of it in its own code block at that moment. Never shorten it with "…" or point back to an earlier message.
-- Never ask for, read or print a private key, a password, a recovery copy, the workspace's settings file or a backup's contents. A private key starts with `nsec`. The only key they share with you starts with `npub`.
+- Never ask for, read or print a private key, a password, a recovery copy, the workspace's settings file or a backup's contents. A private key starts with `nsec`. The only key they share with you starts with `npub`. Never read their clipboard either: some steps pass a secret through it precisely so that you never see it.
 
 They need about 20 GB of free disk on a Mac, or about 35 GB on Windows, where the build tools are larger. That is all.
 
@@ -144,7 +144,9 @@ Say this plainly: "Everything in your workspace now lives on this computer. If i
 bin/node scripts/workrooms-solo/backup.mjs
 ```
 
-The workspace pauses for a few seconds while the copy is taken. The folder appears in **Documents**, inside **Workrooms Backups**, named with the date. It is only a real backup once a copy is somewhere other than this computer: an external drive, or a cloud folder they trust. It holds the workspace's private settings, so they keep it as private as the computer itself. Suggest a rhythm they will keep, such as every Friday, and offer to run it whenever they ask.
+The workspace pauses for a few seconds while the copy is taken. The folder appears in **Documents**, inside **Workrooms Backups**, named with the date. It is only a real backup once a copy is somewhere other than this computer: an external drive, or a cloud folder they trust. It holds the workspace's private settings and is not encrypted, so they keep it as private as the computer itself: in a cloud folder, that company can read it. Suggest a rhythm they will keep, such as every Friday, and offer to run it whenever they ask.
+
+This is the simple backup, and it is enough to start with. Once the workspace holds work they would miss, set up **Encrypted backups, kept off this computer** below: one locked file that is safe to keep with a storage company, made every week without them.
 
 A hired agent's own setup is kept by the app in the computer's own app data, not in this folder. A backup of the whole computer covers it: Time Machine on a Mac, or the backup tool they use on Windows.
 
@@ -156,9 +158,137 @@ bin/node scripts/workrooms-solo/restore.mjs "/path/to/Workrooms backup 2026-11-1
 
 They install the app as in step 3, choose **Set up my workspace**, then **Use an existing key**, and paste their recovery copy into the app (never into this chat). They connect to the same address as before. Restore refuses to run where a workspace already exists, so it can never overwrite one, and a restore that stops partway cleans up after itself, so it can simply be run again.
 
+## Encrypted backups, kept off this computer
+
+The recommended next step once the workspace is in real use. It is not part of the first setup. It replaces "remember to copy the folder somewhere" with one encrypted file, sent somewhere other than this computer, every week, by itself.
+
+Tell them how it works before you start, in these words or your own: "Your backup gets locked with a backup key, which has two halves. The half that locks stays on this computer, so backups can run without you. The half that unlocks goes into your password manager and nowhere else: not on this computer, not in this chat. Anyone who gets the backup file without that half has nothing they can read. And if that half is ever lost, nobody can open your backups, including you and including me."
+
+They need a password manager for this. If they do not use one, the Passwords app is on every Mac; on Windows, help them choose one they trust before you continue. A note or a text file is not a substitute.
+
+Two secrets pass through their clipboard in this section, and you see neither. Never read the clipboard, never read the Keychain or Credential Manager, and never ask them to paste either secret into this chat. Each command below reads what it needs from the clipboard itself and then clears it.
+
+**On Windows and on an Intel Mac** the commands are the same, with `node` for `bin/node` on Windows. On a hosted Windows machine the backup key, the clipboard, Credential Manager and the scheduled task have each been checked, and a backup file has been opened there with the free age tool; nobody has yet run a whole encrypted backup and restore on a Windows PC or an Intel Mac. So on those, run `offsite.mjs status` after the first scheduled backup and read the result with them.
+
+This is a different key from the one that signs them in. Keep the names apart every time you speak: their **owner key** signs them in to the workspace (it starts `nsec`); their **backup key** opens backups (it starts `AGE-SECRET-KEY-1`). Both live in the password manager as separate entries.
+
+### 1 · Make the backup key
+
+Ask them to open their password manager and start a new entry named **Workrooms backup key**. Then run:
+
+```sh
+bin/node scripts/workrooms-solo/offsite.mjs key
+```
+
+The unlocking half is now on their clipboard and nowhere else. They paste it into the new entry and save it. The clipboard is cleared after three minutes; if they needed longer, run the command again for a fresh key.
+
+Now prove the password manager really holds it. They copy the key back out of the entry they just saved, tell you it is copied, and you run:
+
+```sh
+bin/node scripts/workrooms-solo/offsite.mjs key --check
+```
+
+It compares the clipboard with the key that was made, then clears the clipboard. No encrypted backup can be made until this check passes, so a backup can never be locked with a key nobody kept.
+
+### 2 · Choose where the copies go
+
+Either of these, or both. Both is better: two places, run by two different companies.
+
+**A cloud folder they already have** (iCloud Drive, Google Drive, Dropbox, OneDrive). The file is encrypted before it gets there, so that company stores a copy it cannot read. List what this computer has:
+
+```sh
+bin/node scripts/workrooms-solo/offsite.mjs folders
+```
+
+Choose one with them and give the command a folder inside it:
+
+```sh
+bin/node scripts/workrooms-solo/offsite.mjs folder "<the cloud folder>/Workrooms Backups"
+```
+
+Say the one limit: a copy only leaves this computer when their cloud app is running, signed in and has finished uploading. If that app is ever signed out, backups pile up on this computer and nothing warns them.
+
+**On Windows** the same command lists OneDrive, iCloud Drive, Dropbox and the Google Drive drive letter when they are installed.
+
+**Their own Cloudflare storage (R2)**. Copies are uploaded straight to a private bucket in their own Cloudflare account, with no cloud app in between. Tell them what Cloudflare asks first: a Cloudflare account, and adding R2 to it goes through a checkout that asks for a payment method, even though the first 10 GB stored each month are free. Storage beyond that costs $0.015 per GB each month (https://developers.cloudflare.com/r2/pricing/). A workspace's backups are usually far below 10 GB. If they would rather not give a payment method, use a cloud folder.
+
+These are theirs to do, in https://dash.cloudflare.com under **Storage & databases → R2 → Overview**. Menu names change, so read the page with them:
+
+1. Add R2 to the account if the page asks, and complete its checkout.
+2. **Create bucket**. Name it `workrooms-backups` and keep the other settings as offered.
+3. Back on the R2 overview, **API Tokens → Manage → Create Account API token** (**Create User API token** works the same if that is what their account offers). Permission: **Object Read & Write**. Under buckets choose **Apply to specific buckets only** and pick `workrooms-backups`. Create it. The token can then touch that one bucket and nothing else in their account.
+4. The next page shows its values once. They paste two of them to you, which are not secret on their own: the **Access Key ID**, and the endpoint, which looks like `https://<account id>.r2.cloudflarestorage.com`. They **copy** the **Secret Access Key** and tell you it is copied, without pasting it. It is not the line called Token value.
+
+Then run, with the Secret Access Key still on their clipboard:
+
+```sh
+bin/node scripts/workrooms-solo/offsite.mjs r2 <endpoint> workrooms-backups <access key id>
+```
+
+The command reads the secret from the clipboard and clears it, proves the token works by writing, reading, listing and deleting a small test file in the bucket, and only then keeps the secret in their Mac's Keychain, or in Windows Credential Manager. It is never written to a file. They do not need to save this secret anywhere else: on a new computer they simply create a new token for the same bucket.
+
+### 3 · Make the first one, then put it on a schedule
+
+```sh
+bin/node scripts/workrooms-solo/backup.mjs --encrypted
+```
+
+The workspace pauses for a few seconds, as with the simple backup. The result is one file named with the date, ending `.tar.age`, in each place they chose.
+
+Ask for a day and a time when their computer is usually on, then:
+
+```sh
+bin/node scripts/workrooms-solo/offsite.mjs schedule friday 13:00
+```
+
+From then on the backup makes itself every week. If the computer was asleep or off at that time, it runs the next time the computer is on. If Docker is not running, it starts Docker first. It keeps the newest eight backups in each place and removes older ones (`offsite.mjs keep <number>` changes that).
+
+The command runs the scheduled backup once straight away and waits for it, so that anything the computer needs to ask is asked while they are sitting there. On a Mac this may be a question whether "node" may access files in the cloud folder: they choose **Allow**. If they choose otherwise, backups to that folder fail until they change it in **System Settings → Privacy & Security → Files and Folders**.
+
+**On Windows** the schedule is a task named **Digital Home Workrooms backup** in Task Scheduler. It runs while they are signed in, and a window may flash for a moment when it starts.
+
+The schedule runs its own copy of these scripts, kept beside the workspace's settings, so it keeps working if this folder moves. After they update the source, run the schedule command again so it uses the new copy.
+
+Whenever they ask whether backups are working, and at the start of any later session about the workspace, run:
+
+```sh
+bin/node scripts/workrooms-solo/offsite.mjs status
+```
+
+It shows what is set up, how many backups are in each place, when the last complete one was made, and the reason for the last failure if there was one. Nothing else tells them a backup failed, so read it to them plainly.
+
+Add to `My Workrooms.md`: where encrypted backups go, the day and time, and that the backup key is the password manager entry **Workrooms backup key**. No secrets go in that file.
+
+### Bringing the workspace back from an encrypted backup
+
+On a new or wiped computer, do steps 1 and 2 of the setup. Then ask them to copy the **backup key** from their password manager and tell you it is copied.
+
+From a cloud folder, once their cloud app has brought the file down:
+
+```sh
+bin/node scripts/workrooms-solo/restore.mjs "<the cloud folder>/Workrooms Backups/Workrooms backup 2026-11-14 1300.tar.age"
+```
+
+From Cloudflare, give this computer the bucket first: they create a new token as in step 2 and you run the `offsite.mjs r2` command. Then they copy the backup key, and:
+
+```sh
+bin/node scripts/workrooms-solo/restore.mjs --r2
+```
+
+That fetches the newest backup; add a file name after `--r2` for an older one. Either way the command reads the backup key from the clipboard, clears it, and tells you plainly if the key is not the one the backup was locked with or if the file is damaged, without changing anything. The same safety rules apply as for the simple restore: it refuses to run where a workspace already exists, and a restore that stops partway cleans up after itself.
+
+They then approve the certificate prompt as in step 4, install the app as in step 3, choose **Use an existing key** and paste their **owner key** into the app. The restored workspace keeps using the same backup key; set the destination and the schedule again with the commands above.
+
+### What to be honest about
+
+- **Lose the backup key and the backups cannot be opened.** There is no reset and nobody to ask. That is what makes them safe to keep with a storage company.
+- **It does not back up their owner key** or a hired agent's setup. Those are covered as described under **Backups**.
+- **Someone who took over this computer could delete the copies**, in a cloud folder or in the bucket, because this computer is allowed to remove old backups. They could not read them.
+- **The file does not depend on this project.** It is a standard age file holding a standard tar. With the backup key in a file, two free tools open it anywhere: `age -d -i key.txt "Workrooms backup ….tar.age" | tar -x`. Inside are the database (a PostgreSQL dump), the uploaded files, the git data and the workspace's settings.
+
 ## Take it with you
 
-A workspace on this computer cannot be reached from a phone or by a teammate. When they want either, the workspace moves to a small server they rent, with an address on a domain they own. That is a later lesson; do not attempt it from this guide. The move starts from a backup made with the command above, so keeping a current backup is all they need to do to be ready. Until then, **Set up my Workrooms on a server** below creates a new, empty workspace on a server.
+A workspace on this computer cannot be reached from a phone or by a teammate. When they want either, the workspace moves to a small server they rent, with an address on a domain they own. That is a later lesson; do not attempt it from this guide. The move starts from a backup made with one of the commands above, so keeping a current backup is all they need to do to be ready. Until then, **Set up my Workrooms on a server** below creates a new, empty workspace on a server.
 
 # Set up my Workrooms on a server
 
