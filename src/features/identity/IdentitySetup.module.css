@@ -435,22 +435,24 @@
   text-align: center;
 }
 
-/* The first-run corner mark (BraveBrand's Digital Home house, one color with
-   the doorway open), drawn in the scope's prominent color: ink on sky, sky on
-   navy. Swap the mark by replacing public/first-run-mark.png with another
-   single-color mark on transparency. */
+/* The first-run corner mark: BraveBrand's Digital Home house in full color,
+   navy with its purple door on sky, and a sky house with the same door on
+   navy (the navy house disappears there). Swap it by replacing
+   public/first-run-mark.svg and public/first-run-mark-dark.svg. At 2.75rem
+   the door is about 6px wide and 18px tall, so it reads as a door. */
 .cornerMark {
   position: absolute;
-  top: var(--space-6);
-  left: var(--space-6);
-  height: calc(var(--space-6) + var(--space-1h));
-  aspect-ratio: 1;
-  background: var(--affordance-prominent);
-  mask: url("/first-run-mark.png") center / contain no-repeat;
+  top: var(--space-5);
+  left: var(--space-5);
+  width: calc(var(--space-8) + var(--space-3));
+  height: calc(var(--space-8) + var(--space-3));
+  background: url("/first-run-mark.svg") center / contain no-repeat;
+}
+:root[data-color-mode="dark"] .cornerMark {
+  background-image: url("/first-run-mark-dark.svg");
 }
 @media (forced-colors: active) {
   .cornerMark {
     forced-color-adjust: none;
-    background: canvastext;
   }
 }

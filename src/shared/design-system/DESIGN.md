@@ -2253,9 +2253,9 @@ workspace and the rest of the setup flow) carry `data-onboarding-scope` on
 OnboardingScreen's root. In that scope `surface-onboarding` is BraveBrand sky
 (#bbdcef) in light mode and ink (#16314c) in dark mode, the prominent action is
 ink with white text (sky with navy text in dark mode), and dark mode resolves the
-neutral roles on a navy ramp. The corner shows the first-run mark
-(`public/first-run-mark.png`, the Digital Home house as a single-color mask) in
-the prominent color. The
+neutral roles on a navy ramp. The corner shows the full-color Digital Home house
+(`public/first-run-mark.svg`; a sky-house variant, `first-run-mark-dark.svg`,
+in dark mode, where the navy house disappears) at 2.75rem so its door reads. The
 Welcome step alone carries a `text-subtle` footnote beneath its card, "Built on
 Buzz by Block" (5.4:1 on sky, 8.6:1 on ink). This is the documented exception to neutral primary actions, and it ends
 with first run: the shell and everything after it keep Buzz's roles. The
