@@ -9,8 +9,8 @@ Which computers, and how far each has been tested. Tell them where theirs stands
 | Computer | Where it stands |
 | --- | --- |
 | Mac with Apple silicon | The route this guide was built and tested on. |
-| Mac with an Intel processor | The same steps with two differences, both marked **On an Intel Mac**: the build command in step 1 and the Docker download in step 2. Nobody has yet run this guide on an Intel Mac. |
-| Windows 10 or 11, 64-bit | The steps marked **On Windows**. The certificate step has been checked on a hosted Windows machine; nobody has yet run this guide on a Windows PC. Expect to solve a snag or two together. On Windows the app offers **Goose** and **Pi** agents only: Claude and Codex agents are switched off outside macOS and Linux, in Buzz itself as well as in this fork. Say so before they plan around a Claude or ChatGPT subscription. |
+| Mac with an Intel processor | The same steps with two differences, both marked **On an Intel Mac**: the build command in step 1 and the Docker download in step 2. That build command has built the app on a hosted Intel Mac; nobody has yet opened the app or run this guide on one. |
+| Windows 10 or 11, 64-bit | The steps marked **On Windows**. On a hosted Windows machine the step 1 build command has built the app and its installer has installed it, and the certificate step has been checked; nobody has yet opened the app or run this guide on a Windows PC. Expect to solve a snag or two together. On Windows the app offers **Goose** and **Pi** agents only: Claude and Codex agents are switched off outside macOS and Linux, in Buzz itself as well as in this fork. Say so before they plan around a Claude or ChatGPT subscription. |
 
 How to guide:
 
@@ -48,10 +48,11 @@ bin/rustup toolchain install && bin/node scripts/bravebrand-client.mjs --rehears
 winget install --id Git.Git -e
 winget install --id Microsoft.VisualStudio.2022.BuildTools -e --override "--passive --wait --add Microsoft.VisualStudio.Workload.VCTools --includeRecommended"
 winget install --id Rustlang.Rustup -e
-winget install --id OpenJS.NodeJS.LTS -e
 ```
 
-Open a new PowerShell window so the new tools are found, and check that `node --version` reports 24 or newer. Clone as above, then start the build in the background from the repository folder:
+Node is the exception. This repository pins Node 24.18.0 and has only been built with it, while winget's current Node is newer. Give them this link to the official installer and let them run it: https://nodejs.org/dist/v24.18.0/node-v24.18.0-x64.msi
+
+Open a new PowerShell window so the new tools are found, and check that `node --version` reports `v24.18.0`. Clone as above, then start the build in the background from the repository folder:
 
 ```powershell
 node scripts/bravebrand-client.mjs --rehearsal
