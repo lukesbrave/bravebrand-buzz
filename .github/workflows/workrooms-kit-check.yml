@@ -1,0 +1,47 @@
+name: Workrooms kit check
+
+# Quick evidence for Windows without a Windows computer: the local workspace
+# kit's name, certificate and trust pieces, and the installers the guide names.
+on:
+  push:
+    branches: [codex/workrooms-solo-ci-kit]
+
+permissions:
+  contents: read
+
+jobs:
+  windows-kit:
+    name: Windows · kit name, certificate and trust
+    runs-on: windows-2025
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 24.18.0
+      - name: Tools the kit relies on
+        shell: pwsh
+        continue-on-error: true
+        run: |
+          git --exec-path
+          Get-Command certutil.exe, powershell.exe, curl.exe | Format-Table Name, Source
+          Resolve-DnsName localhost | Format-Table Name, Type, IPAddress
+          (Get-CimInstance Win32_OperatingSystem).Caption
+      - name: Installers the guide names
+        shell: pwsh
+        continue-on-error: true
+        run: |
+          winget --version
+          foreach ($id in 'Git.Git', 'Microsoft.VisualStudio.2022.BuildTools', 'Rustlang.Rustup', 'OpenJS.NodeJS.LTS', 'Docker.DockerDesktop') {
+            winget show --id $id --exact --accept-source-agreements --disable-interactivity | Select-String -Pattern '^(Found|Version|No package)'
+          }
+      - name: Without trust
+        run: node .github/workrooms/kit-check.mjs none
+      - name: The user-store trust step, with nobody to answer its prompt
+        timeout-minutes: 2
+        continue-on-error: true
+        run: node .github/workrooms/kit-check.mjs user
+      - name: With trust (machine store)
+        run: node .github/workrooms/kit-check.mjs machine

@@ -1,0 +1,97 @@
+name: Workrooms platform check
+
+# Evidence for platforms nobody on the team owns: the self-hosted client built
+# the way the guide says on Windows and on an Intel Mac, and the local
+# workspace kit's name, certificate and trust pieces on Windows.
+on:
+  push:
+    branches: [codex/workrooms-solo-ci]
+
+permissions:
+  contents: read
+
+jobs:
+  windows-kit:
+    name: Windows · kit name, certificate and trust
+    runs-on: windows-2025
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 24.18.0
+      - name: Tools the kit relies on
+        shell: pwsh
+        run: |
+          git --exec-path
+          Get-Command certutil.exe, powershell.exe, curl.exe | Format-Table Name, Source
+          Resolve-DnsName workrooms.localhost -ErrorAction Continue
+      - name: Without trust
+        run: node .github/workrooms/kit-check.mjs none
+      - name: The user-store trust step, with nobody to answer its prompt
+        timeout-minutes: 2
+        continue-on-error: true
+        run: node .github/workrooms/kit-check.mjs user
+      - name: With trust (machine store)
+        run: node .github/workrooms/kit-check.mjs machine
+
+  windows-build:
+    name: Windows · build and install the app
+    runs-on: windows-2025
+    timeout-minutes: 150
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 24.18.0
+      - name: pnpm at the repository's pin
+        shell: pwsh
+        run: npm install -g pnpm@11.8.0
+      - name: Build as the guide does
+        shell: pwsh
+        run: node scripts/bravebrand-client.mjs --rehearsal
+      - name: The sign-in server setting reached the build empty
+        shell: pwsh
+        run: |
+          $hits = @(Get-ChildItem target/debug/build/*/output | Select-String -SimpleMatch 'cargo:rustc-env=BUZZ_BUILD_FEDERATED_IDENTITY_CONFIG=')
+          $hits | ForEach-Object { $_.Line.Substring(0, [Math]::Min(160, $_.Line.Length)) }
+          if ($hits.Count -ne 0) { throw 'A sign-in server was compiled in: the empty setting did not reach the build' }
+      - name: Install and find the app
+        shell: pwsh
+        run: |
+          $installers = @(Get-ChildItem target/debug/bundle/nsis/*.exe)
+          $installers | Format-Table Name, Length
+          if ($installers.Count -ne 1) { throw 'Expected exactly one installer' }
+          $destination = "$env:RUNNER_TEMP\workrooms-install"
+          $process = Start-Process $installers[0].FullName -ArgumentList "/S /D=$destination" -Wait -PassThru
+          if ($process.ExitCode -ne 0) { throw "Installer failed: $($process.ExitCode)" }
+          Get-ChildItem $destination | Format-Table Name, Length
+          Get-ChildItem "$destination\bin" -ErrorAction Continue | Format-Table Name, Length
+          if (!(Test-Path "$destination\Buzz.exe")) { throw 'App executable missing' }
+          & "$destination\bin\buzz.exe" --help | Out-Null
+          if ($LASTEXITCODE -ne 0) { throw 'buzz does not run' }
+
+  intel-mac-build:
+    name: Intel Mac · build the app and check the kit
+    runs-on: macos-15-intel
+    timeout-minutes: 150
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Processor
+        run: uname -m && sw_vers
+      - name: Build as the guide does
+        run: bin/rustup toolchain install && ./scripts/bravebrand-client.sh --rehearsal
+      - name: Verify the bundle
+        run: |
+          app="target/debug/bundle/macos/Brave Agent Workrooms Rehearsal.app"
+          codesign --verify --deep --strict "$app"
+          lipo -archs "$app/Contents/MacOS/Buzz"
+          /usr/libexec/PlistBuddy -c "Print :CFBundleIdentifier" "$app/Contents/Info.plist"
+      - name: Kit name and certificate
+        run: bin/node .github/workrooms/kit-check.mjs none
