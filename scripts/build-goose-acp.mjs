@@ -64,8 +64,12 @@ export async function stageGoose(root, pin, triple, download = fetch) {
   try {
     if (!existsSync(archive) || hash(readFileSync(archive)) !== asset.sha256) {
       console.log(`Downloading goose-acp ${pin.version} (${triple})`);
+      // Twenty minutes, not two: on a slow or busy connection this small
+      // archive has taken longer than two minutes while other parts of the
+      // build were downloading, which stopped the whole build. The checksum
+      // below still decides whether what arrived is used.
       const response = await download(asset.url, {
-        signal: AbortSignal.timeout(120_000),
+        signal: AbortSignal.timeout(20 * 60_000),
       });
       if (!response.ok)
         throw new Error(`Goose download failed: HTTP ${response.status}`);
