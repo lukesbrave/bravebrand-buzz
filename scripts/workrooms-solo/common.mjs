@@ -57,16 +57,27 @@ export const TAGS = [
 /** Already fetched for the database; also supplies tar for volume copies. */
 export const TOOLS = POSTGRES;
 
+/** Why this run stopped, for a caller that records the outcome on exit. */
+export const failure = {};
 export const fail = (message) => {
+  failure.message = message;
   console.error(message);
   process.exit(1);
 };
 export const sleep = (ms) => new Promise((done) => setTimeout(done, ms));
 
-// Keys, with Node alone so the kit runs straight after a clone. A public key
-// is 32 bytes; NIP-19 writes it as bech32 with the prefix "npub".
+// Keys, with Node alone so the kit runs straight after a clone. Every key
+// here is 32 bytes written as bech32 behind a prefix: NIP-19 uses "npub" for
+// a public key, and age uses "age" and "age-secret-key-" for a backup key.
 const BECH32 = "qpzry9x8gf2tvdw0s3jn54khce6mua7l";
-const NPUB_PREFIX = [3, 3, 3, 3, 0, 14, 16, 21, 2];
+const prefixWords = (prefix) => {
+  const codes = [...prefix].map((letter) => letter.charCodeAt(0));
+  return [
+    ...codes.map((code) => code >> 5),
+    0,
+    ...codes.map((code) => code & 31),
+  ];
+};
 function bech32Checksum(words) {
   let check = 1;
   for (const word of words) {
@@ -81,12 +92,18 @@ function bech32Checksum(words) {
   return check;
 }
 
-/** The 64-character hex public key in an npub, or undefined if it is not one. */
-export function decodeNpub(text) {
-  if (!/^npub1[qpzry9x8gf2tvdw0s3jn54khce6mua7l]{58}$/.test(text))
+/** The 32 bytes (as hex) of a key written with this prefix, or undefined if
+ * the text is not one. */
+export function bech32Decode(prefix, text) {
+  const body = text.slice(prefix.length + 1);
+  if (
+    !text.startsWith(`${prefix}1`) ||
+    !/^[qpzry9x8gf2tvdw0s3jn54khce6mua7l]{58}$/.test(body)
+  )
     return undefined;
-  const words = [...text.slice(5)].map((letter) => BECH32.indexOf(letter));
-  if (bech32Checksum([...NPUB_PREFIX, ...words]) !== 1) return undefined;
+  const words = [...body].map((letter) => BECH32.indexOf(letter));
+  if (bech32Checksum([...prefixWords(prefix), ...words]) !== 1)
+    return undefined;
   // 52 five-bit words carry 256 bits and four padding bits, which are zero.
   const bits = words
     .slice(0, 52)
@@ -95,19 +112,23 @@ export function decodeNpub(text) {
   return (bits >> 4n).toString(16).padStart(64, "0");
 }
 
-export function encodeNpub(hex) {
+export function bech32Encode(prefix, hex) {
   const bits = BigInt(`0x${hex}`) << 4n;
   const words = Array.from({ length: 52 }, (_, index) =>
     Number((bits >> BigInt(5 * (51 - index))) & 31n),
   );
   const check =
-    bech32Checksum([...NPUB_PREFIX, ...words, 0, 0, 0, 0, 0, 0]) ^ 1;
+    bech32Checksum([...prefixWords(prefix), ...words, 0, 0, 0, 0, 0, 0]) ^ 1;
   const sum = Array.from(
     { length: 6 },
     (_, index) => (check >>> (5 * (5 - index))) & 31,
   );
-  return `npub1${[...words, ...sum].map((word) => BECH32[word]).join("")}`;
+  return `${prefix}1${[...words, ...sum].map((word) => BECH32[word]).join("")}`;
 }
+
+/** The 64-character hex public key in an npub, or undefined if it is not one. */
+export const decodeNpub = (text) => bech32Decode("npub", text);
+export const encodeNpub = (hex) => bech32Encode("npub", hex);
 
 /** The public key (hex) of a secret key (hex), as Nostr writes it. */
 export function publicKey(secret) {
@@ -157,6 +178,10 @@ export function docker(
   }
   if (result.status !== 0) {
     if (!check) return undefined;
+    failure.message ??= `Docker could not finish: docker ${args
+      .filter((word) => !word.includes(home))
+      .slice(0, 6)
+      .join(" ")}`;
     process.exit(result.status ?? 1);
   }
   return capture ? result.stdout : "";
