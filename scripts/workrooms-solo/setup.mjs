@@ -18,41 +18,37 @@
 // that out, for automated tests only.
 import { randomBytes } from "node:crypto";
 import { createServer } from "node:net";
-import { generateSecretKey, getPublicKey, nip19 } from "nostr-tools";
 import {
   addressSettings,
   certificateDaysLeft,
   checkWorkspace,
   compose,
+  decodeNpub,
   docker,
   dockerStartsAtLogin,
+  encodeNpub,
   ensureDocker,
   ensureTrusted,
   fail,
   home,
   IMAGE,
   makeCertificate,
+  newSecretKey,
   placeFiles,
+  publicKey,
   readSettings,
   TAGS,
   writeSettings,
 } from "./common.mjs";
 
 const [rawOwner] = process.argv.slice(2);
-let owner;
-if (rawOwner) {
-  try {
-    const decoded = /^[0-9a-f]{64}$/.test(rawOwner)
-      ? { type: "npub", data: rawOwner }
-      : nip19.decode(rawOwner);
-    if (decoded.type !== "npub") throw new Error();
-    owner = decoded.data;
-  } catch {
-    fail(
-      "That is not a public key. Copy the key starting with npub1 from the app. Never paste a key starting with nsec.",
-    );
-  }
-}
+const owner = /^[0-9a-f]{64}$/.test(rawOwner ?? "")
+  ? rawOwner
+  : decodeNpub(rawOwner ?? "");
+if (rawOwner && !owner)
+  fail(
+    "That is not a public key. Copy the key starting with npub1 from the app. Never paste a key starting with nsec.",
+  );
 
 await ensureDocker();
 for (const tag of TAGS)
@@ -98,7 +94,7 @@ if (!settings) {
     BUZZ_PUSH_ENABLED: "false",
     BUZZ_IMAGE: IMAGE,
     RELAY_OWNER_PUBKEY: owner,
-    BUZZ_RELAY_PRIVATE_KEY: hex(generateSecretKey()),
+    BUZZ_RELAY_PRIVATE_KEY: newSecretKey(),
     BUZZ_GIT_HOOK_HMAC_SECRET: hex(randomBytes(32)),
     POSTGRES_PASSWORD: hex(randomBytes(24)),
     REDIS_PASSWORD: hex(randomBytes(24)),
@@ -125,11 +121,11 @@ compose(["up", "-d", "--wait"]);
 if (renewed) compose(["restart", "gateway"]);
 const origin = await checkWorkspace(
   port,
-  getPublicKey(Buffer.from(settings.BUZZ_RELAY_PRIVATE_KEY, "hex")),
+  publicKey(settings.BUZZ_RELAY_PRIVATE_KEY),
 );
 
 console.log(
-  `Workspace ready: ${origin}\nOwner: ${nip19.npubEncode(owner)}\nSettings and certificate: ${home}\nCertificate valid for ${certificateDaysLeft()} more days; running this command again renews it.\nEnter ${origin} in the app to connect.`,
+  `Workspace ready: ${origin}\nOwner: ${encodeNpub(owner)}\nSettings and certificate: ${home}\nCertificate valid for ${certificateDaysLeft()} more days; running this command again renews it.\nEnter ${origin} in the app to connect.`,
 );
 if (startsAtLogin === false)
   console.log(

@@ -2,7 +2,7 @@
 // computer keeps its settings, how Docker is reached, the certificate, and the
 // checks that prove the workspace answers as itself. macOS and Windows.
 import { execFileSync, spawn, spawnSync } from "node:child_process";
-import { X509Certificate } from "node:crypto";
+import { createECDH, X509Certificate } from "node:crypto";
 import {
   chmodSync,
   copyFileSync,
@@ -57,6 +57,65 @@ export const fail = (message) => {
   process.exit(1);
 };
 export const sleep = (ms) => new Promise((done) => setTimeout(done, ms));
+
+// Keys, with Node alone so the kit runs straight after a clone. A public key
+// is 32 bytes; NIP-19 writes it as bech32 with the prefix "npub".
+const BECH32 = "qpzry9x8gf2tvdw0s3jn54khce6mua7l";
+const NPUB_PREFIX = [3, 3, 3, 3, 0, 14, 16, 21, 2];
+function bech32Checksum(words) {
+  let check = 1;
+  for (const word of words) {
+    const top = check >>> 25;
+    check = ((check & 0x1ffffff) << 5) ^ word;
+    [0x3b6a57b2, 0x26508e6d, 0x1ea119fa, 0x3d4233dd, 0x2a1462b3].forEach(
+      (generator, bit) => {
+        if ((top >>> bit) & 1) check ^= generator;
+      },
+    );
+  }
+  return check;
+}
+
+/** The 64-character hex public key in an npub, or undefined if it is not one. */
+export function decodeNpub(text) {
+  if (!/^npub1[qpzry9x8gf2tvdw0s3jn54khce6mua7l]{58}$/.test(text))
+    return undefined;
+  const words = [...text.slice(5)].map((letter) => BECH32.indexOf(letter));
+  if (bech32Checksum([...NPUB_PREFIX, ...words]) !== 1) return undefined;
+  // 52 five-bit words carry 256 bits and four padding bits, which are zero.
+  const bits = words
+    .slice(0, 52)
+    .reduce((all, word) => (all << 5n) | BigInt(word), 0n);
+  if (bits & 0xfn) return undefined;
+  return (bits >> 4n).toString(16).padStart(64, "0");
+}
+
+export function encodeNpub(hex) {
+  const bits = BigInt(`0x${hex}`) << 4n;
+  const words = Array.from({ length: 52 }, (_, index) =>
+    Number((bits >> BigInt(5 * (51 - index))) & 31n),
+  );
+  const check =
+    bech32Checksum([...NPUB_PREFIX, ...words, 0, 0, 0, 0, 0, 0]) ^ 1;
+  const sum = Array.from(
+    { length: 6 },
+    (_, index) => (check >>> (5 * (5 - index))) & 31,
+  );
+  return `npub1${[...words, ...sum].map((word) => BECH32[word]).join("")}`;
+}
+
+/** The public key (hex) of a secret key (hex), as Nostr writes it. */
+export function publicKey(secret) {
+  const pair = createECDH("secp256k1");
+  pair.setPrivateKey(Buffer.from(secret, "hex"));
+  return pair.getPublicKey("hex", "compressed").slice(2);
+}
+
+export function newSecretKey() {
+  const pair = createECDH("secp256k1");
+  pair.generateKeys();
+  return pair.getPrivateKey("hex").padStart(64, "0");
+}
 
 // Docker Desktop's own copy of the command, which is there even when the
 // installer has not yet put it on PATH.

@@ -9,18 +9,19 @@
 // it makes a certificate and asks the system to trust it.
 import { closeSync, existsSync, openSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import { getPublicKey, nip19 } from "nostr-tools";
 import {
   addressSettings,
   checkWorkspace,
   compose,
   docker,
+  encodeNpub,
   ensureDocker,
   ensureTrusted,
   fail,
   home,
   makeCertificate,
   placeFiles,
+  publicKey,
   project,
   readSettings,
   removeFiles,
@@ -169,11 +170,11 @@ if (settings.BUZZ_DOMAIN !== saved.BUZZ_DOMAIN) {
 compose(["up", "-d", "--wait"]);
 const origin = await checkWorkspace(
   port,
-  getPublicKey(Buffer.from(settings.BUZZ_RELAY_PRIVATE_KEY, "hex")),
+  publicKey(settings.BUZZ_RELAY_PRIVATE_KEY),
 );
 restored = true;
 console.log(
-  `Workspace restored: ${origin}\nOwner: ${nip19.npubEncode(settings.RELAY_OWNER_PUBKEY)}\nSettings and certificate: ${home}`,
+  `Workspace restored: ${origin}\nOwner: ${encodeNpub(settings.RELAY_OWNER_PUBKEY)}\nSettings and certificate: ${home}`,
 );
 ensureTrusted(
   "The workspace itself is restored. Run setup.mjs with the owner's public key and approve the prompt.",
