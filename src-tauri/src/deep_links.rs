@@ -10,8 +10,8 @@ use tauri::{ipc::Channel, Manager};
 /// All desktop builds use the same scheme as in-app links and Copy link.
 const SCHEME: &str = "buzz";
 // Keep the shared navigation parser on its canonical scheme. Only OS ingress differs.
-const OS_SCHEME: &str = if buzz_credential_store::BRAVEBRAND_REHEARSAL {
-    "workrooms-rehearsal"
+const OS_SCHEME: &str = if buzz_credential_store::BRAVEBRAND_WORKROOMS {
+    "workrooms"
 } else {
     SCHEME
 };
@@ -201,19 +201,19 @@ mod tests {
     }
 
     #[test]
-    fn rehearsal_bundle_registers_its_own_scheme_and_credential_feature() {
+    fn workrooms_bundle_registers_its_own_scheme_and_credential_feature() {
         let config: serde_json::Value =
-            serde_json::from_str(include_str!("../tauri.bravebrand-rehearsal.conf.json")).unwrap();
-        assert_eq!(config["identifier"], "com.bravebrand.workrooms.rehearsal");
+            serde_json::from_str(include_str!("../tauri.bravebrand-workrooms.conf.json")).unwrap();
+        assert_eq!(config["identifier"], "com.bravebrand.digitalhome.workrooms");
         assert_eq!(
             config["build"]["features"],
-            serde_json::json!(["bravebrand-rehearsal"])
+            serde_json::json!(["bravebrand-workrooms"])
         );
         assert_eq!(
             config["plugins"]["deep-link"]["desktop"]["schemes"],
-            serde_json::json!(["workrooms-rehearsal"])
+            serde_json::json!(["workrooms"])
         );
-        if buzz_credential_store::BRAVEBRAND_REHEARSAL {
+        if buzz_credential_store::BRAVEBRAND_WORKROOMS {
             assert_eq!(
                 OS_SCHEME,
                 config["plugins"]["deep-link"]["desktop"]["schemes"][0]

@@ -9,8 +9,8 @@ use tokio::sync::Mutex;
 use zeroize::Zeroizing;
 
 #[cfg_attr(test, allow(dead_code))]
-pub(crate) const KEY_SERVICE: &str = if buzz_credential_store::BRAVEBRAND_REHEARSAL {
-    "com.bravebrand.workrooms.rehearsal.jev-key"
+pub(crate) const KEY_SERVICE: &str = if buzz_credential_store::BRAVEBRAND_WORKROOMS {
+    "com.bravebrand.digitalhome.workrooms.jev-key"
 } else if cfg!(debug_assertions) {
     "xyz.block.buzz.desktop.jev-key.debug"
 } else {
@@ -18,8 +18,8 @@ pub(crate) const KEY_SERVICE: &str = if buzz_credential_store::BRAVEBRAND_REHEAR
 };
 /// The service before 1.0. Reads copy a key found only there; clearing removes it too.
 #[cfg_attr(test, allow(dead_code))]
-const PREVIOUS_KEY_SERVICE: &str = if buzz_credential_store::BRAVEBRAND_REHEARSAL {
-    "com.bravebrand.workrooms.rehearsal.previous-jev-key"
+const PREVIOUS_KEY_SERVICE: &str = if buzz_credential_store::BRAVEBRAND_WORKROOMS {
+    "com.bravebrand.digitalhome.workrooms.previous-jev-key"
 } else if cfg!(debug_assertions) {
     "dev.local.buzz.foundation.jev-key.debug"
 } else {

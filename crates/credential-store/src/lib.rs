@@ -25,10 +25,10 @@ pub fn dev_item(
         .map(|helper| dev_helper::item(&helper, operation, service, account, value))
 }
 
-pub const BRAVEBRAND_REHEARSAL: bool = cfg!(feature = "bravebrand-rehearsal");
+pub const BRAVEBRAND_WORKROOMS: bool = cfg!(feature = "bravebrand-workrooms");
 pub const BRAVEBRAND_CLIENT: bool = cfg!(feature = "bravebrand-client");
-pub const SESSION_SERVICE_PREFIX: &str = if BRAVEBRAND_REHEARSAL {
-    "com.bravebrand.workrooms.rehearsal.federated-session"
+pub const SESSION_SERVICE_PREFIX: &str = if BRAVEBRAND_WORKROOMS {
+    "com.bravebrand.digitalhome.workrooms.federated-session"
 } else if BRAVEBRAND_CLIENT {
     "com.bravebrand.buzz.client.federated-session"
 } else {
@@ -45,8 +45,8 @@ pub const PREVIOUS_HUMAN_SERVICE: &str = human_store(cfg!(debug_assertions));
 pub const HUMAN_STORE: &str = human_store(cfg!(debug_assertions));
 
 pub const fn human_service(debug: bool) -> &'static str {
-    if BRAVEBRAND_REHEARSAL {
-        "com.bravebrand.workrooms.rehearsal.identity"
+    if BRAVEBRAND_WORKROOMS {
+        "com.bravebrand.digitalhome.workrooms.identity"
     } else if BRAVEBRAND_CLIENT {
         "com.bravebrand.buzz.client.identity"
     } else if debug {
@@ -57,8 +57,8 @@ pub const fn human_service(debug: bool) -> &'static str {
 }
 
 pub const fn human_store(debug: bool) -> &'static str {
-    if BRAVEBRAND_REHEARSAL {
-        "com.bravebrand.workrooms.rehearsal.identity-store"
+    if BRAVEBRAND_WORKROOMS {
+        "com.bravebrand.digitalhome.workrooms.identity-store"
     } else if BRAVEBRAND_CLIENT {
         "com.bravebrand.buzz.client.identity-store"
     } else if debug {

@@ -389,8 +389,8 @@ fn uppercase_import_keeps_the_exact_key_and_mixed_case_is_rejected() {
 fn development_and_release_items_are_separate() {
     assert_eq!(
         credentials::HUMAN_SERVICE,
-        if credentials::BRAVEBRAND_REHEARSAL {
-            "com.bravebrand.workrooms.rehearsal.identity"
+        if credentials::BRAVEBRAND_WORKROOMS {
+            "com.bravebrand.digitalhome.workrooms.identity"
         } else if credentials::BRAVEBRAND_CLIENT {
             "com.bravebrand.buzz.client.identity"
         } else if cfg!(debug_assertions) {

@@ -288,16 +288,16 @@ fn home_child() {
 }
 #[test]
 fn human_identity_slots_stay_separate() {
-    if BRAVEBRAND_REHEARSAL {
-        assert_eq!(HUMAN_SERVICE, "com.bravebrand.workrooms.rehearsal.identity");
+    if BRAVEBRAND_WORKROOMS {
+        assert_eq!(HUMAN_SERVICE, "com.bravebrand.digitalhome.workrooms.identity");
         assert_eq!(
             HUMAN_STORE,
-            "com.bravebrand.workrooms.rehearsal.identity-store"
+            "com.bravebrand.digitalhome.workrooms.identity-store"
         );
         assert_eq!(PREVIOUS_HUMAN_SERVICE, HUMAN_STORE);
         assert_eq!(
             SESSION_SERVICE_PREFIX,
-            "com.bravebrand.workrooms.rehearsal.federated-session"
+            "com.bravebrand.digitalhome.workrooms.federated-session"
         );
         return;
     }

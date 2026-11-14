@@ -127,7 +127,7 @@ fn read_all(root: &Path) -> Result<Vec<Saved>, String> {
 
 #[tauri::command]
 pub(crate) async fn legacy_communities() -> Result<Vec<Saved>, String> {
-    if buzz_credential_store::BRAVEBRAND_REHEARSAL {
+    if buzz_credential_store::BRAVEBRAND_WORKROOMS {
         return Ok(Vec::new());
     }
     tauri::async_runtime::spawn_blocking(|| root().map_or(Ok(vec![]), |root| read_all(&root)))

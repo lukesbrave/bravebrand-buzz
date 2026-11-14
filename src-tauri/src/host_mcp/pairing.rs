@@ -5,8 +5,8 @@ use sha2::{Digest, Sha256};
 use std::path::{Path, PathBuf};
 use tauri::Manager;
 
-const SERVICE: &str = if buzz_credential_store::BRAVEBRAND_REHEARSAL {
-    "com.bravebrand.workrooms.rehearsal.external-app-pairing.v1"
+const SERVICE: &str = if buzz_credential_store::BRAVEBRAND_WORKROOMS {
+    "com.bravebrand.digitalhome.workrooms.external-app-pairing.v1"
 } else {
     "xyz.block.buzz.desktop.external-app-pairing.v1"
 };

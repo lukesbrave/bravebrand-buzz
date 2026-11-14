@@ -33,13 +33,13 @@ Clone this repository into a fresh folder at the revision in the supplied link. 
 Check `xcode-select -p`. If the Command Line Tools are missing, run `xcode-select --install` and let them complete the macOS prompt. Then start the build in the background and move on while it runs:
 
 ```sh
-bin/rustup toolchain install && ./scripts/bravebrand-client.sh --rehearsal
+bin/rustup toolchain install && ./scripts/bravebrand-client.sh --workrooms
 ```
 
 **On an Intel Mac:** one of the pinned tools has no Intel version, so that command stops at once. Use this one instead; it does the same build:
 
 ```sh
-bin/rustup toolchain install && bin/node scripts/bravebrand-client.mjs --rehearsal
+bin/rustup toolchain install && bin/node scripts/bravebrand-client.mjs --workrooms
 ```
 
 **On Windows:** the pinned tools in `bin/` do not run on Windows, so install the build tools first. Each one may show a Windows permission window, which they approve. Git comes first, because it fetches the repository:
@@ -55,7 +55,7 @@ Node is the exception. This repository pins Node 24.18.0 and has only been built
 Open a new PowerShell window so the new tools are found, and check that `node --version` reports `v24.18.0`. Clone as above, then start the build in the background from the repository folder:
 
 ```powershell
-node scripts/bravebrand-client.mjs --rehearsal
+node scripts/bravebrand-client.mjs --workrooms
 ```
 
 ## Step 2 of 5 · Get Docker ready
@@ -183,7 +183,7 @@ Clone this repository into a fresh folder at the revision in the supplied link. 
 Check `xcode-select -p`. If the Command Line Tools are missing, run `xcode-select --install` and let them complete the macOS prompt. Then start the build in the background and move on while it runs:
 
 ```sh
-bin/rustup toolchain install && ./scripts/bravebrand-client.sh --rehearsal
+bin/rustup toolchain install && ./scripts/bravebrand-client.sh --workrooms
 ```
 
 ## Step 3 of 7 · Create the server
@@ -275,7 +275,7 @@ The app and server can be set up independently. If the app is already building o
 
 Build the local macOS client with `scripts/bravebrand-client.sh`. Open `target/debug/bundle/macos/BraveBrand.app`. Choose **I have an invite**, enter your relay’s HTTPS address or invite link and choose **Create my identity**. Your server controls admission. For an invite-only relay, use an invite or have the administrator admit the public key shown during setup. Save a private recovery copy from **Settings → Identity**. This build stores its identity separately from Buzz and does not configure a Builderlab sign-in server.
 
-To rehearse first launch on the same macOS login, run `scripts/bravebrand-client.sh --rehearsal` and open `target/debug/bundle/macos/Digital Home Workrooms.app`. This separate installation owns its own identity, agents, plugin profile and URL scheme. Enter the new server’s HTTPS address or paste its invite into the app. Reopening the rehearsal app resumes that rehearsal. AI tools installed for the macOS user can still be available.
+The member build is Digital Home Workrooms: run `scripts/bravebrand-client.sh --workrooms` and open `target/debug/bundle/macos/Digital Home Workrooms.app`. It is a separate installation with its own identity, agents, plugin profile and URL scheme (identifier `com.bravebrand.digitalhome.workrooms`, links beginning `workrooms://`), so it never shares a key or data with Buzz or the BraveBrand client build. Enter the server’s HTTPS address or paste its invite into the app. AI tools installed for the macOS user can still be available.
 
 # BraveBrand Buzz pilot
 

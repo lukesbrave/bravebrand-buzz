@@ -12,8 +12,8 @@ pub(super) fn acquire() -> Result<Lock, Failure> {
         .dir;
     acquire_at_home(&home)
 }
-const LOCK_DIRECTORY: &str = if buzz_credential_store::BRAVEBRAND_REHEARSAL {
-    ".com.bravebrand.workrooms.rehearsal.credential-locks"
+const LOCK_DIRECTORY: &str = if buzz_credential_store::BRAVEBRAND_WORKROOMS {
+    ".com.bravebrand.digitalhome.workrooms.credential-locks"
 } else {
     ".buzz-foundation-credential-locks"
 };

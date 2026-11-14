@@ -63,8 +63,8 @@ type Kept = &'static [(&'static str, &'static [&'static str])];
 /// Named for the storage every Buzz shares whatever its identifier: the default
 /// plugin folder and the fixed agent key service. It keeps the legacy identifier
 /// so builds from before 1.0 and later ones exclude each other.
-const LOCK: &str = if buzz_credential_store::BRAVEBRAND_REHEARSAL {
-    ".com.bravebrand.workrooms.rehearsal.instance.lock"
+const LOCK: &str = if buzz_credential_store::BRAVEBRAND_WORKROOMS {
+    ".com.bravebrand.digitalhome.workrooms.instance.lock"
 } else {
     ".dev.local.buzz.foundation.instance.lock"
 };

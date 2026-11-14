@@ -8,7 +8,7 @@ rust-version = "1.90"
 
 [features]
 bravebrand-client = ["buzz-credential-store/bravebrand-client"]
-bravebrand-rehearsal = ["bravebrand-client", "buzz-credential-store/bravebrand-rehearsal"]
+bravebrand-workrooms = ["bravebrand-client", "buzz-credential-store/bravebrand-workrooms"]
 native-mcp = ["dep:tauri-plugin-mcp-bridge"]
 
 # build.rs's own tests.

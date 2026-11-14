@@ -2,7 +2,7 @@
 // which has no Hermit bin/ tools, and Intel Macs, for which Hermit has no
 // pnpm. It applies the same settings and configs as that script.
 //
-//   node scripts/bravebrand-client.mjs [--rehearsal] [tauri build options]
+//   node scripts/bravebrand-client.mjs [--workrooms] [tauri build options]
 //
 // Run it with Node 24. On a Mac that is bin/node, and Rust comes from bin/
 // too; on Windows, Node and Rust are installed first.
@@ -12,8 +12,8 @@ import { delimiter, dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const args = process.argv.slice(2);
-const rehearsal = args[0] === "--rehearsal";
-if (rehearsal) args.shift();
+const workrooms = args[0] === "--workrooms";
+if (workrooms) args.shift();
 const windows = process.platform === "win32";
 const root = fileURLToPath(new URL("../", import.meta.url));
 
@@ -72,6 +72,6 @@ run("pnpm", [
   "--bundles",
   windows ? "nsis" : "app",
   "--config",
-  `src-tauri/tauri.bravebrand-${rehearsal ? "rehearsal" : "client"}.conf.json`,
+  `src-tauri/tauri.bravebrand-${workrooms ? "workrooms" : "client"}.conf.json`,
   ...args,
 ]);

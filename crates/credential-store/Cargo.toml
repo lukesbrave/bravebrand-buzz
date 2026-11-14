@@ -7,7 +7,7 @@ rust-version = "1.89"
 
 [features]
 bravebrand-client = []
-bravebrand-rehearsal = ["bravebrand-client"]
+bravebrand-workrooms = ["bravebrand-client"]
 
 [dependencies]
 keyring = { version = "=3.6.3", default-features = false }
