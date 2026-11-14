@@ -26,11 +26,11 @@ How to guide:
 
 They need about 20 GB of free disk on a Mac, or about 35 GB on Windows, where the build tools are larger. That is all.
 
-That figure is space, not a download, and say so, because people hear “20 GB” as hours of waiting. On a Mac about 7 GB is downloaded in total (the source code, the build tools and libraries, and the workspace software); the rest, about 13 GB, is made on their own computer while the app is built and uses no internet. Tell them the downloads run in the background while they do their part, that a slow connection only makes this first setup longer, and that nothing is downloaded again afterwards. Once the app is installed, offer to delete the build's working files to give most of that space back; the app itself is about half a gigabyte. If they later update, the build makes those files again.
+That figure is space, not a download, and say so, because people hear “20 GB” as hours of waiting. On a Mac about 6 GB is downloaded in total (the source code, the build tools and libraries, and the workspace software); the rest, about 13 GB, is made on their own computer while the app is built and uses no internet. Tell them the downloads run in the background while they do their part, that a slow connection only makes this first setup longer, and that nothing is downloaded again afterwards. Once the app is installed, offer to delete the build's working files to give most of that space back; the app itself is about half a gigabyte. If they later update, the build makes those files again.
 
 ## Step 1 of 5 · Start building the app
 
-Clone this repository into a fresh folder at the revision in the supplied link. For a commit link, verify that `git rev-parse HEAD` matches it. Tell them this folder is their own copy of the app's source code.
+Fetch this repository into a fresh folder at the revision in the supplied link, and fetch only that revision: the project's whole history is over 600 MB and is not needed, while one revision is about 30 MB. For a link to the repository itself, `git clone --depth 1 <link>`. For a commit link, make the folder, then `git init`, `git remote add origin <repository link>`, `git fetch --depth 1 origin <commit>` and `git checkout FETCH_HEAD`, and verify that `git rev-parse HEAD` matches the commit. Tell them this folder is their own copy of the app's source code.
 
 Check `xcode-select -p`. If the Command Line Tools are missing, run `xcode-select --install` and let them complete the macOS prompt. Then start the build in the background and move on while it runs:
 
@@ -116,6 +116,8 @@ Give them the address the command printed, in its own code block. It is `https:/
 
 Do not stop to ask whether they are the owner. The workspace lets in only the key it was started with until they invite someone, and the command already checked that key, so anyone who gets in is the owner. When they say they are in, tell them their name is marked **Owner** in the members list, as something good to see, and carry straight on. If the app says the workspace needs an invite or will not connect, the app is holding a different key from the code they pasted to you: have them copy the code from the app again and compare it with the owner the command printed.
 
+Then have them give the workspace a name, because until they do the app calls it by its address, `localhost:18480`. In the app: **Settings → Local settings → Display name**. Their business name works well. Only they see this name, and they can change it whenever they like.
+
 Then, before anything else:
 
 1. **Back up their key.** Say it this way: "The key you made on the Create my key screen is how you sign in as the owner. It only exists on this computer. If this computer is lost or replaced and you have no backup, nobody can get you back in." In the app they open **Settings → Identity**, find **Private key**, choose **Copy private key**, and paste it straight into their password manager. It starts with `nsec`. It must never be pasted into this chat.
@@ -184,7 +186,7 @@ If they have no domain, a made-up address will not work: the name has to be on a
 
 ## Step 2 of 7 · Start building the app
 
-Clone this repository into a fresh folder at the revision in the supplied link. For a commit link, verify that `git rev-parse HEAD` matches it. Tell them this folder is their own copy of the app's source code.
+Fetch this repository into a fresh folder at the revision in the supplied link, and fetch only that revision: the project's whole history is over 600 MB and is not needed, while one revision is about 30 MB. For a link to the repository itself, `git clone --depth 1 <link>`. For a commit link, make the folder, then `git init`, `git remote add origin <repository link>`, `git fetch --depth 1 origin <commit>` and `git checkout FETCH_HEAD`, and verify that `git rev-parse HEAD` matches the commit. Tell them this folder is their own copy of the app's source code.
 
 Check `xcode-select -p`. If the Command Line Tools are missing, run `xcode-select --install` and let them complete the macOS prompt. Then start the build in the background and move on while it runs:
 
