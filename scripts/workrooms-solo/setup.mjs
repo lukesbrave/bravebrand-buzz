@@ -1,5 +1,5 @@
-// Sets up a Workrooms workspace on this Mac, reachable only from this Mac.
-// No domain, no rented server. Run it twice:
+// Sets up a Workrooms workspace on this computer, reachable only from this
+// computer. No domain, no rented server. macOS and Windows. Run it twice:
 //
 //   bin/node scripts/workrooms-solo/setup.mjs
 //     starts Docker Desktop if needed and fetches the workspace software
@@ -12,30 +12,29 @@
 // key is read or printed. Rerun the same command after an interruption, after
 // a Docker update, or when the app cannot reach the workspace.
 //
-// The second run makes a certificate for workrooms.localhost and asks macOS to
-// trust it; macOS then asks the person at the Mac for their password or Touch
-// ID. WORKROOMS_TRUST=skip leaves that out, for automated tests only.
+// The second run makes a certificate for workrooms.localhost and asks the
+// system to trust it: macOS asks the person for their password or Touch ID,
+// Windows shows a security warning to confirm. WORKROOMS_TRUST=skip leaves
+// that out, for automated tests only.
 import { randomBytes } from "node:crypto";
 import { createServer } from "node:net";
 import { generateSecretKey, getPublicKey, nip19 } from "nostr-tools";
 import {
   addressSettings,
   certificateDaysLeft,
-  certificateTrusted,
   checkWorkspace,
   compose,
   docker,
   dockerStartsAtLogin,
   ensureDocker,
+  ensureTrusted,
   fail,
-  HOST,
   home,
   IMAGE,
   makeCertificate,
   placeFiles,
   readSettings,
   TAGS,
-  trustCertificate,
   writeSettings,
 } from "./common.mjs";
 
@@ -88,7 +87,7 @@ if (!settings) {
   const port = Number(process.env.WORKROOMS_PORT || 18480);
   if (!(await portFree(port)))
     fail(
-      `Port ${port} on this Mac is in use. Run this again with WORKROOMS_PORT set to a free port, such as ${port + 1}.`,
+      `Port ${port} on this computer is in use. Run this again with WORKROOMS_PORT set to a free port, such as ${port + 1}.`,
     );
   settings = {
     ...addressSettings(port),
@@ -111,7 +110,7 @@ if (!settings) {
 }
 if (settings.RELAY_OWNER_PUBKEY !== owner)
   fail(
-    "This Mac's workspace already has a different owner key. Nothing was changed.",
+    "This computer's workspace already has a different owner key. Nothing was changed.",
   );
 const port = Number(settings.WORKROOMS_PORT);
 
@@ -119,15 +118,7 @@ placeFiles();
 // Renew a month early: the app refuses an expired certificate outright.
 const renewed = certificateDaysLeft() < 30;
 if (renewed) makeCertificate();
-if (process.env.WORKROOMS_TRUST !== "skip" && !certificateTrusted()) {
-  console.log(
-    `macOS will now ask for this Mac's password or Touch ID. It is asking to trust the certificate that keeps the connection to ${HOST} private.`,
-  );
-  if (!trustCertificate() || !certificateTrusted())
-    fail(
-      "The certificate was not trusted, so the app could not connect. Run the same command again and approve the macOS prompt.",
-    );
-}
+ensureTrusted("Run the same command again and approve the prompt.");
 
 compose(["up", "-d", "--wait"]);
 // The gateway reads the certificate when it starts.

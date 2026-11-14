@@ -1,4 +1,4 @@
-// Saves a complete copy of the workspace on this Mac into one dated folder:
+// Saves a complete copy of the workspace on this computer into one dated folder:
 // every message and channel, uploaded files, git data and the workspace's
 // settings. restore.mjs rebuilds the workspace from that folder.
 //
@@ -6,8 +6,9 @@
 //
 // The default folder is ~/Documents/Workrooms Backups. The workspace pauses
 // for a few seconds while the copy is taken. The copy holds the workspace's
-// own private settings, so keep it as private as the Mac itself. The owner's
-// key is not in it: that lives in the Mac's Keychain and its recovery copy.
+// own private settings, so keep it as private as the computer itself. The
+// owner's key is not in it: that lives in the system's credential store and
+// its recovery copy.
 import {
   closeSync,
   copyFileSync,
@@ -31,7 +32,7 @@ import {
 } from "./common.mjs";
 
 const settings = readSettings();
-if (!settings) fail("There is no workspace on this Mac to back up.");
+if (!settings) fail("There is no workspace on this computer to back up.");
 await ensureDocker();
 
 const parent =

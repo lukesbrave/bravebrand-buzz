@@ -1,7 +1,7 @@
 // Shared by setup.mjs, backup.mjs and restore.mjs: where the workspace on this
-// Mac keeps its settings, how Docker is reached, the certificate, and the
-// checks that prove the workspace answers as itself.
-import { execFileSync, spawnSync } from "node:child_process";
+// computer keeps its settings, how Docker is reached, the certificate, and the
+// checks that prove the workspace answers as itself. macOS and Windows.
+import { execFileSync, spawn, spawnSync } from "node:child_process";
 import { X509Certificate } from "node:crypto";
 import {
   chmodSync,
@@ -15,14 +15,21 @@ import {
 } from "node:fs";
 import { request } from "node:https";
 import { homedir, tmpdir } from "node:os";
-import { dirname, join } from "node:path";
+import { delimiter, dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-/** The name resolves to this Mac on every Mac, with nothing to register. */
+const windows = process.platform === "win32";
+
+/** The name resolves to this computer everywhere, with nothing to register. */
 export const HOST = "workrooms.localhost";
 export const home =
   process.env.WORKROOMS_HOME ||
-  join(homedir(), "Library/Application Support/Workrooms Local Workspace");
+  (windows
+    ? join(
+        process.env.LOCALAPPDATA || join(homedir(), "AppData/Local"),
+        "Workrooms Local Workspace",
+      )
+    : join(homedir(), "Library/Application Support/Workrooms Local Workspace"));
 export const project = process.env.WORKROOMS_PROJECT || "workrooms";
 export const settingsFile = join(home, ".env");
 export const certs = join(home, "certs");
@@ -48,13 +55,20 @@ export const fail = (message) => {
 };
 export const sleep = (ms) => new Promise((done) => setTimeout(done, ms));
 
-const dockerApp = "/Applications/Docker.app";
-const dockerBin = `${dockerApp}/Contents/Resources/bin/docker`;
+// Docker Desktop's own copy of the command, which is there even when the
+// installer has not yet put it on PATH.
+const dockerRoot = windows
+  ? join(process.env.ProgramFiles || "C:/Program Files", "Docker/Docker")
+  : "/Applications/Docker.app";
+const dockerApp = windows ? join(dockerRoot, "Docker Desktop.exe") : dockerRoot;
+const dockerBin = windows
+  ? join(dockerRoot, "resources/bin/docker.exe")
+  : `${dockerRoot}/Contents/Resources/bin/docker`;
 const dockerPath = existsSync(dockerBin) ? dockerBin : "docker";
 const dockerEnv = (extra = {}) => ({
   ...process.env,
   ...extra,
-  PATH: `${dirname(dockerPath)}:${process.env.PATH}`,
+  PATH: `${dirname(dockerPath)}${delimiter}${process.env.PATH}`,
 });
 
 /**
@@ -92,26 +106,33 @@ export async function ensureDocker() {
   if (engineUp()) return;
   if (!existsSync(dockerApp))
     fail(
-      "Docker Desktop is not installed. Install it from https://www.docker.com/products/docker-desktop/ (Mac with Apple silicon), open it once so its owner can accept the terms, then run this again.",
+      "Docker Desktop is not installed. Install it from https://www.docker.com/products/docker-desktop/, open it once so its owner can accept the terms, then run this again.",
     );
   console.log("Starting Docker Desktop…");
-  spawnSync("/usr/bin/open", ["-ga", dockerApp]);
+  if (windows)
+    spawn(dockerApp, [], { detached: true, stdio: "ignore" }).unref();
+  else spawnSync("/usr/bin/open", ["-ga", dockerApp]);
   for (let waited = 0; waited < 180; waited += 3) {
     if (engineUp()) return;
     await sleep(3_000);
   }
   fail(
-    "Docker Desktop did not finish starting. Open Docker from Applications, finish anything it asks for, then run this again.",
+    "Docker Desktop did not finish starting. Open Docker Desktop, finish anything it asks for, then run this again.",
   );
 }
 
-/** True when Docker Desktop is set to open when its owner signs in to the Mac. */
+/** True when Docker Desktop is set to open when its owner signs in. */
 export function dockerStartsAtLogin() {
   try {
-    const file = join(
-      homedir(),
-      "Library/Group Containers/group.com.docker/settings-store.json",
-    );
+    const file = windows
+      ? join(
+          process.env.APPDATA || join(homedir(), "AppData/Roaming"),
+          "Docker/settings-store.json",
+        )
+      : join(
+          homedir(),
+          "Library/Group Containers/group.com.docker/settings-store.json",
+        );
     return JSON.parse(readFileSync(file, "utf8")).AutoStart === true;
   } catch {
     return undefined;
@@ -142,7 +163,7 @@ export function writeSettings(values) {
   );
 }
 
-/** The address lines of the settings for a port on this Mac. */
+/** The address lines of the settings for a port on this computer. */
 export function addressSettings(port) {
   const authority = `${HOST}:${port}`;
   return {
@@ -166,6 +187,13 @@ export function placeFiles() {
   );
   copyFileSync(here("./compose.solo.yml"), join(home, "compose.solo.yml"));
   copyFileSync(here("./Caddyfile"), join(home, "Caddyfile"));
+}
+
+/** Removes only what this kit wrote, for a restore that did not finish. */
+export function removeFiles() {
+  for (const name of ["compose.yml", "compose.solo.yml", "Caddyfile", ".env"])
+    rmSync(join(home, name), { force: true });
+  rmSync(certs, { recursive: true, force: true });
 }
 
 export function compose(args, options = {}) {
@@ -197,19 +225,35 @@ export function certificateDaysLeft() {
   return Math.floor((until.getTime() - Date.now()) / 86_400_000);
 }
 
+/** macOS ships OpenSSL. On Windows, Git for Windows carries one, and Git is
+ * what fetched this checkout. */
+function opensslPath() {
+  if (!windows) return "/usr/bin/openssl";
+  try {
+    const core = execFileSync("git", ["--exec-path"], { encoding: "utf8" });
+    const bundled = resolve(core.trim(), "../../../usr/bin/openssl.exe");
+    if (existsSync(bundled)) return bundled;
+  } catch {
+    // Fall through to whatever PATH offers.
+  }
+  return "openssl";
+}
+
 /**
  * Makes the certificate for HOST. A one-off authority signs it and its private
- * key is deleted before this returns, so the authority this Mac is later asked
- * to trust can never vouch for any other name. macOS accepts at most 825 days.
+ * key is deleted before this returns, so the authority this computer is later
+ * asked to trust can never vouch for any other name. macOS accepts at most
+ * 825 days.
  */
 export function makeCertificate() {
   const work = mkdtempSync(join(tmpdir(), "workrooms-cert-"));
+  const tool = opensslPath();
   const openssl = (args) =>
-    execFileSync("/usr/bin/openssl", args, { cwd: work, stdio: "pipe" });
+    execFileSync(tool, args, { cwd: work, stdio: "pipe" });
   try {
     const made = new Date().toISOString().slice(0, 10);
-    // LibreSSL ignores -subj when the config sets prompt = no, so each
-    // certificate's name lives in its own config.
+    // LibreSSL (macOS) ignores -subj when the config sets prompt = no, so
+    // each certificate's name lives in its own config.
     const config = (file, name, extensions) =>
       writeFileSync(
         join(work, file),
@@ -217,7 +261,7 @@ export function makeCertificate() {
       );
     config(
       "authority.cnf",
-      `Workrooms on this Mac ${made}`,
+      `Workrooms on this computer ${made}`,
       "basicConstraints = critical, CA:TRUE, pathlen:0\nkeyUsage = critical, keyCertSign\nsubjectKeyIdentifier = hash",
     );
     config(
@@ -293,8 +337,25 @@ export function makeCertificate() {
   }
 }
 
-/** True when this Mac's login trusts the workspace's certificate for HTTPS. */
+/** True when this login trusts the workspace's certificate for HTTPS. */
 export function certificateTrusted() {
+  if (windows)
+    // Builds the chain against the Windows certificate stores, as the app does.
+    return (
+      spawnSync(
+        "powershell.exe",
+        [
+          "-NoProfile",
+          "-NonInteractive",
+          "-Command",
+          "$c = [System.Security.Cryptography.X509Certificates.X509Certificate2]::new($env:WORKROOMS_CERTIFICATE); $chain = [System.Security.Cryptography.X509Certificates.X509Chain]::new(); $chain.ChainPolicy.RevocationMode = 'NoCheck'; if ($chain.Build($c)) { exit 0 }; exit 1",
+        ],
+        {
+          stdio: "ignore",
+          env: { ...process.env, WORKROOMS_CERTIFICATE: leafFile },
+        },
+      ).status === 0
+    );
   return (
     spawnSync(
       "/usr/bin/security",
@@ -304,25 +365,45 @@ export function certificateTrusted() {
   );
 }
 
-/** macOS asks the person at the Mac for their password or Touch ID. */
+/**
+ * Asks the system to trust the workspace's authority for this login only.
+ * macOS asks the person for their password or Touch ID; Windows shows a
+ * security warning with Yes and No.
+ */
 export function trustCertificate() {
-  const keychain = join(homedir(), "Library/Keychains/login.keychain-db");
-  return (
-    spawnSync(
-      "/usr/bin/security",
-      [
-        "add-trusted-cert",
-        "-r",
-        "trustRoot",
-        "-p",
-        "ssl",
-        "-k",
-        keychain,
-        authorityFile,
-      ],
-      { stdio: "inherit" },
-    ).status === 0
+  const [tool, args] = windows
+    ? ["certutil.exe", ["-user", "-addstore", "Root", authorityFile]]
+    : [
+        "/usr/bin/security",
+        [
+          "add-trusted-cert",
+          "-r",
+          "trustRoot",
+          "-p",
+          "ssl",
+          "-k",
+          join(homedir(), "Library/Keychains/login.keychain-db"),
+          authorityFile,
+        ],
+      ];
+  return spawnSync(tool, args, { stdio: "inherit" }).status === 0;
+}
+
+/** Trusts the certificate unless this login already does. `retry` says how
+ * to try again if the person declines. */
+export function ensureTrusted(retry) {
+  if (process.env.WORKROOMS_TRUST === "skip" || certificateTrusted()) return;
+  console.log(
+    `${
+      windows
+        ? "Windows will now show a security warning about installing a certificate; its owner chooses Yes."
+        : "macOS will now ask for this Mac's password or Touch ID."
+    } It is asking to trust the certificate that keeps the connection to ${HOST} private.`,
   );
+  if (!trustCertificate() || !certificateTrusted())
+    fail(
+      `The certificate was not trusted, so the app could not connect. ${retry}`,
+    );
 }
 
 /** One HTTPS request to the workspace, verified against its own authority. */
@@ -356,7 +437,7 @@ export function reach(port, path, { method = "GET", headers, body } = {}) {
 }
 
 /**
- * What the app's first connection depends on, checked from this Mac: the
+ * What the app's first connection depends on, checked from this computer: the
  * address answers as this workspace, refuses an anonymous read and hides its
  * operator routes.
  */

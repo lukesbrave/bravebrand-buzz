@@ -1,30 +1,31 @@
-// Rebuilds the workspace on this Mac from a folder backup.mjs made: after a
-// new Mac, a reinstall or a wiped Docker. It refuses to run where a workspace
-// already exists, so it can never overwrite one.
+// Rebuilds the workspace on this computer from a folder backup.mjs made: after
+// a new computer, a reinstall or a wiped Docker. It refuses to run where a
+// workspace already exists, so it can never overwrite one, and a restore that
+// does not finish removes what it started, so it can simply be run again.
 //
 //   bin/node scripts/workrooms-solo/restore.mjs "<backup folder>"
 //
 // The owner signs in afterwards with the same key as before. Like setup.mjs
-// it makes a certificate, and macOS asks the person at the Mac to trust it.
+// it makes a certificate and asks the system to trust it.
 import { closeSync, existsSync, openSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { getPublicKey, nip19 } from "nostr-tools";
 import {
   addressSettings,
-  certificateTrusted,
   checkWorkspace,
   compose,
   docker,
   ensureDocker,
+  ensureTrusted,
   fail,
-  HOST,
   home,
   makeCertificate,
   placeFiles,
+  project,
   readSettings,
+  removeFiles,
   TAGS,
   TOOLS,
-  trustCertificate,
   writeSettings,
 } from "./common.mjs";
 
@@ -39,7 +40,23 @@ if (
   fail('Usage: restore.mjs "<backup folder>", a folder made by backup.mjs.');
 if (readSettings())
   fail(
-    `This Mac already has a workspace (${home}). Nothing was changed. Restore is for a Mac without one.`,
+    `This computer already has a workspace (${home}). Nothing was changed. Restore is for a computer without one.`,
+  );
+await ensureDocker();
+if (
+  docker(
+    [
+      "volume",
+      "ls",
+      "-q",
+      "--filter",
+      `label=com.docker.compose.project=${project}`,
+    ],
+    { capture: true },
+  ).trim()
+)
+  fail(
+    `Docker still holds data named ${project} from an earlier workspace. Nothing was changed.`,
   );
 
 const saved = Object.fromEntries(
@@ -56,25 +73,24 @@ const saved = Object.fromEntries(
 const port = Number(process.env.WORKROOMS_PORT || saved.WORKROOMS_PORT);
 const settings = { ...saved, ...addressSettings(port) };
 
-await ensureDocker();
 for (const tag of TAGS)
   if (
     docker(["image", "inspect", tag], { capture: true, check: false }) ===
     undefined
   )
     docker(["pull", tag]);
+
+// Everything from here was made by this run, which the two checks above
+// established, so an unfinished run may remove it.
+let restored = false;
+process.on("exit", () => {
+  if (restored) return;
+  compose(["down", "-v"], { check: false });
+  removeFiles();
+});
 writeSettings(settings);
 placeFiles();
 makeCertificate();
-if (process.env.WORKROOMS_TRUST !== "skip" && !certificateTrusted()) {
-  console.log(
-    `macOS will now ask for this Mac's password or Touch ID. It is asking to trust the certificate that keeps the connection to ${HOST} private.`,
-  );
-  if (!trustCertificate() || !certificateTrusted())
-    fail(
-      "The certificate was not trusted, so the app could not connect. Trust it by running setup.mjs with the owner's public key.",
-    );
-}
 
 /** Runs docker with a file from the backup as its input. */
 function load(name, run) {
@@ -147,7 +163,7 @@ if (settings.BUZZ_DOMAIN !== saved.BUZZ_DOMAIN) {
   );
   if (!/^[0-9a-f-]{36}$/m.test(moved))
     fail(
-      "The backup's records do not match its settings. The workspace was not started.",
+      "The backup's records do not match its settings. The workspace was not restored.",
     );
 }
 compose(["up", "-d", "--wait"]);
@@ -155,6 +171,10 @@ const origin = await checkWorkspace(
   port,
   getPublicKey(Buffer.from(settings.BUZZ_RELAY_PRIVATE_KEY, "hex")),
 );
+restored = true;
 console.log(
   `Workspace restored: ${origin}\nOwner: ${nip19.npubEncode(settings.RELAY_OWNER_PUBKEY)}\nSettings and certificate: ${home}`,
+);
+ensureTrusted(
+  "The workspace itself is restored. Run setup.mjs with the owner's public key and approve the prompt.",
 );
