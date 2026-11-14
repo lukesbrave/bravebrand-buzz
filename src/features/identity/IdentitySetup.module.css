@@ -449,11 +449,11 @@
   background: url("/first-run-mark.svg") center / contain no-repeat;
 }
 /* macOS draws its window buttons over this corner, centred about 24px down
-   and reaching about 70px in. There the mark sits to their right, level with
-   them. */
+   and reaching about 70px in. There the mark sits just below them, starting
+   at the same left edge, where Buzz places its own mark. */
 .cornerMark[data-mac-window] {
-  top: var(--space-1);
-  left: calc(var(--space-8) * 2 + var(--space-6));
+  top: calc(var(--space-8) + var(--space-5));
+  left: var(--space-6);
 }
 :root[data-color-mode="dark"] .cornerMark {
   background-image: url("/first-run-mark-dark.svg");
