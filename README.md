@@ -4,13 +4,13 @@
 
 This is the place to start. A workspace set up this way is reachable from this computer only. When they later want it on their phone or want teammates in it, it moves to a server: see **Take it with you** below. If they already know they want that today, use **Set up my Workrooms on a server** instead. If they are joining a workspace someone else set up, skip to **Joining with an invite**.
 
-Which computers, and how far each has been tested. Tell them where theirs stands before you begin:
+Which computers, and what to tell the person about theirs before you begin. The right-hand column is for you. Say only what is in **What to say**, in your own plain words; do not talk about how this guide was built or tested.
 
 | Computer | Where it stands |
 | --- | --- |
-| Mac with Apple silicon | The route this guide was built and tested on. |
-| Mac with an Intel processor | The same steps with two differences, both marked **On an Intel Mac**: the build command in step 1 and the Docker download in step 2. That build command has built the app on a hosted Intel Mac; nobody has yet opened the app or run this guide on one. |
-| Windows 10 or 11, 64-bit | The steps marked **On Windows**. On a hosted Windows machine the step 1 build command has built the app and its installer has installed it, and the certificate step has been checked; nobody has yet opened the app or run this guide on a Windows PC. Expect to solve a snag or two together. On Windows the app offers **Goose** and **Pi** agents only: Claude and Codex agents are switched off outside macOS and Linux, in Buzz itself as well as in this fork. Say so before they plan around a Claude or ChatGPT subscription. |
+| Mac with Apple silicon | Fully supported. **What to say:** their Mac is ready for this, and nothing more about it. |
+| Mac with an Intel processor | The same steps with two differences, both marked **On an Intel Mac**: the build command in step 1 and the Docker download in step 2. That build command has built the app on a hosted Intel Mac; nobody has yet opened the app or run this guide on one. **What to say:** their Mac works with this, the steps differ in two small places, and it is a newer route, so you may need to solve a snag together. |
+| Windows 10 or 11, 64-bit | The steps marked **On Windows**. On a hosted Windows machine the step 1 build command has built the app and its installer has installed it, and the certificate step has been checked; nobody has yet opened the app or run this guide on a Windows PC. Expect to solve a snag or two together. On Windows the app offers **Goose** and **Pi** agents only: Claude and Codex agents are switched off outside macOS and Linux, in Buzz itself as well as in this fork. Say so before they plan around a Claude or ChatGPT subscription. **What to say:** Windows works with this and is the newest route, so expect to solve a snag or two together; and which agents they can use. |
 
 How to guide:
 
@@ -25,6 +25,8 @@ How to guide:
 - Never ask for, read or print a private key, a password, a recovery copy, the workspace's settings file or a backup's contents. A private key starts with `nsec`. The only key they share with you starts with `npub`.
 
 They need about 20 GB of free disk on a Mac, or about 35 GB on Windows, where the build tools are larger. That is all.
+
+That figure is space, not a download, and say so, because people hear “20 GB” as hours of waiting. On a Mac about 7 GB is downloaded in total (the source code, the build tools and libraries, and the workspace software); the rest, about 13 GB, is made on their own computer while the app is built and uses no internet. Tell them the downloads run in the background while they do their part, that a slow connection only makes this first setup longer, and that nothing is downloaded again afterwards. Once the app is installed, offer to delete the build's working files to give most of that space back; the app itself is about half a gigabyte. If they later update, the build makes those files again.
 
 ## Step 1 of 5 · Start building the app
 
