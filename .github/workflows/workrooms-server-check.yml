@@ -1,0 +1,209 @@
+name: Workrooms server check
+
+# Evidence for the server kit on Linux machines nobody here owns: a workspace
+# made as on its owner's computer is moved onto "a server" (this same machine,
+# reached over SSH as the scripts reach a real one), and a new community is
+# installed, each with phone linking answering. Throwaway: not for merging.
+on:
+  push:
+    branches: [codex/workrooms-server-ci]
+
+permissions:
+  contents: read
+
+jobs:
+  server:
+    name: ${{ matrix.case }} · ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, ubuntu-24.04-arm]
+        case: [move, install, helper]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    env:
+      # Caddy gives a name under .localhost a certificate from its own
+      # authority, which nothing here trusts; identity is checked by key.
+      NODE_TLS_REJECT_UNAUTHORIZED: "0"
+      HOSTNAME_UNDER_TEST: team.localhost
+      WORKROOMS_HOME: ${{ github.workspace }}/../workrooms home with spaces
+      WORKROOMS_PROJECT: wr-source
+      WORKROOMS_TRUST: skip
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 24.18.0
+      - name: Machine
+        run: |
+          uname -m; . /etc/os-release; echo "$PRETTY_NAME"
+          docker --version; docker compose version
+          sudo ss -ltnp | grep -E ':(80|443|18479|18480)\b' || echo "ports free"
+      - name: The one package install.mjs needs
+        run: npm install --no-save --no-package-lock "nostr-tools@$(node -p "require('./package.json').dependencies['nostr-tools']")"
+      - name: Reach this machine as a server, over SSH as root
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y -q openssh-server
+          sudo systemctl start ssh
+          mkdir -p ~/.ssh && chmod 700 ~/.ssh
+          ssh-keygen -q -t ed25519 -N "" -f ~/.ssh/id_ed25519
+          sudo mkdir -p /root/.ssh && sudo chmod 700 /root/.ssh
+          sudo tee -a /root/.ssh/authorized_keys <~/.ssh/id_ed25519.pub >/dev/null
+          address=$(ip -4 -o route get 1.1.1.1 | sed -n 's/.* src \([0-9.]*\).*/\1/p')
+          echo "$address $HOSTNAME_UNDER_TEST" | sudo tee -a /etc/hosts
+          ssh -o StrictHostKeyChecking=accept-new -o BatchMode=yes root@127.0.0.1 'id -un; docker --version'
+          node -e 'require("node:dns").lookup(process.env.HOSTNAME_UNDER_TEST,{family:4},(e,a)=>console.log("resolves to",a))'
+      - name: An owner key
+        run: |
+          node --input-type=module -e '
+            import { encodeNpub, newSecretKey, publicKey } from "./scripts/workrooms-solo/common.mjs";
+            console.log("OWNER=" + encodeNpub(publicKey(newSecretKey())));
+          ' >>"$GITHUB_ENV"
+
+      # ---- move: a workspace on "the owner's computer", then onto the server
+      - name: A workspace as on the owner's computer
+        if: matrix.case == 'move'
+        run: |
+          node scripts/workrooms-solo/setup.mjs
+          node scripts/workrooms-solo/setup.mjs "$OWNER"
+      - name: Something in every store, and a record of it
+        if: matrix.case == 'move'
+        run: |
+          one() { docker ps -q --filter "label=com.docker.compose.project=$1" --filter "label=com.docker.compose.service=$2"; }
+          docker exec "$(one wr-source minio)" sh -c 'mkdir -p /data/ci && echo files-marker >/data/ci/marker.txt'
+          docker exec -u 0 "$(one wr-source relay)" sh -c 'mkdir -p /data/git/ci && echo git-marker >/data/git/ci/marker.txt'
+          bash .github/workrooms/server-record.sh wr-source >"$RUNNER_TEMP/before.txt"
+          cat "$RUNNER_TEMP/before.txt"
+      - name: Back it up
+        if: matrix.case == 'move'
+        run: |
+          node scripts/workrooms-solo/backup.mjs
+          folder=$(find "$HOME/Documents/Workrooms Backups" -maxdepth 1 -name 'Workrooms backup *' -type d | sort | tail -1)
+          ls -la "$folder"
+          echo "BACKUP=$folder" >>"$GITHUB_ENV"
+      - name: Prepare the server
+        if: matrix.case == 'move'
+        run: node scripts/workrooms-server/install.mjs root@127.0.0.1 "$HOSTNAME_UNDER_TEST"
+      - name: Move the workspace onto the server
+        if: matrix.case == 'move'
+        run: node scripts/workrooms-server/move.mjs root@127.0.0.1 "$HOSTNAME_UNDER_TEST" "$BACKUP"
+      - name: The same records, files and identity, at the new address
+        if: matrix.case == 'move'
+        run: |
+          bash .github/workrooms/server-record.sh workrooms >"$RUNNER_TEMP/after.txt"
+          cat "$RUNNER_TEMP/after.txt"
+          # The relay writes self-test files each time it starts, so the server
+          # may hold more files: every file from before must be there unchanged.
+          grep -Ev '^(host=|stored-file )' "$RUNNER_TEMP/before.txt" >"$RUNNER_TEMP/b"; grep -Ev '^(host=|stored-file )' "$RUNNER_TEMP/after.txt" >"$RUNNER_TEMP/a"
+          diff "$RUNNER_TEMP/b" "$RUNNER_TEMP/a"
+          grep '^stored-file ' "$RUNNER_TEMP/before.txt" | sort >"$RUNNER_TEMP/bf"; grep '^stored-file ' "$RUNNER_TEMP/after.txt" | sort >"$RUNNER_TEMP/af"
+          test -s "$RUNNER_TEMP/bf"
+          lost=$(comm -23 "$RUNNER_TEMP/bf" "$RUNNER_TEMP/af"); [ -z "$lost" ] || { echo "lost or changed:"; echo "$lost"; exit 1; }
+          echo "$(wc -l <"$RUNNER_TEMP/bf") stored files arrived unchanged"
+          grep -qx "host=$HOSTNAME_UNDER_TEST" "$RUNNER_TEMP/after.txt"
+          grep -q '^host=localhost:18480$' "$RUNNER_TEMP/before.txt"
+          sudo test ! -e /opt/workrooms/incoming
+          echo "moved intact"
+      - name: Running it again only checks
+        if: matrix.case == 'move'
+        run: node scripts/workrooms-server/move.mjs root@127.0.0.1 "$HOSTNAME_UNDER_TEST" "$BACKUP" | tee "$RUNNER_TEMP/again.txt" && grep -q "already on the server" "$RUNNER_TEMP/again.txt"
+      - name: The original on the owner's computer is untouched
+        if: matrix.case == 'move'
+        run: |
+          bash .github/workrooms/server-record.sh wr-source >"$RUNNER_TEMP/source-after.txt"
+          diff <(grep -v '^stored-file ' "$RUNNER_TEMP/before.txt") <(grep -v '^stored-file ' "$RUNNER_TEMP/source-after.txt")
+          lost=$(comm -23 "$RUNNER_TEMP/bf" <(grep '^stored-file ' "$RUNNER_TEMP/source-after.txt" | sort)); [ -z "$lost" ]
+          echo "original unchanged"
+
+      # ---- install: a new, empty community on the server
+      - name: Install a new community
+        if: matrix.case == 'install' || matrix.case == 'helper'
+        run: |
+          node scripts/workrooms-server/install.mjs root@127.0.0.1 "$HOSTNAME_UNDER_TEST"
+          node scripts/workrooms-server/install.mjs root@127.0.0.1 "$HOSTNAME_UNDER_TEST" "$OWNER"
+      - name: A workspace cannot be moved onto it
+        if: matrix.case == 'install'
+        run: |
+          mkdir -p "$RUNNER_TEMP/fake" && cd "$RUNNER_TEMP/fake"
+          touch database.dump files.tar git.tar
+          printf 'BUZZ_DOMAIN=localhost:18480\nBUZZ_RELAY_PRIVATE_KEY=%064d\nRELAY_OWNER_PUBKEY=%064d\n' 1 2 >settings.env
+          cd "$GITHUB_WORKSPACE"
+          if node scripts/workrooms-server/move.mjs root@127.0.0.1 "$HOSTNAME_UNDER_TEST" "$RUNNER_TEMP/fake" 2>"$RUNNER_TEMP/refused.txt"; then
+            echo "a move onto an existing community was not refused"; exit 1
+          fi
+          cat "$RUNNER_TEMP/refused.txt"; grep -q "already hosts a different community" "$RUNNER_TEMP/refused.txt"
+
+      # ---- helper: an always-on agent beside the community
+      - name: Install the helper (builds Buzz's runner and Codex)
+        if: matrix.case == 'helper'
+        run: node scripts/workrooms-server/helper.mjs root@127.0.0.1 install "Scout" | tee "$RUNNER_TEMP/helper.txt"
+      - name: The four tools are in the image, at the pinned versions
+        if: matrix.case == 'helper'
+        run: |
+          run() { sudo docker run --rm --entrypoint "$1" workrooms-helper:local "${@:2}"; }
+          run buzz-acp --version
+          run buzz --version
+          run codex --version
+          run codex-acp --version || run sh -c 'ls -la /usr/local/bin/codex-acp && npm ls -g --depth 0'
+          sudo docker image inspect workrooms-helper:local --format 'image size: {{.Size}} bytes'
+      - name: It has its own key, is admitted, and is not signed in yet
+        if: matrix.case == 'helper'
+        run: |
+          helper=$(sed -n 's/^helper=//p' "$RUNNER_TEMP/helper.txt")
+          echo "$helper" | grep -Eq '^[0-9a-f]{64}$'
+          one() { sudo docker ps -q --filter "label=com.docker.compose.project=workrooms" --filter "label=com.docker.compose.service=$1"; }
+          members=$(sudo docker exec "$(one postgres)" sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -At -c "$0"' "SELECT count(*) FROM relay_members WHERE pubkey = decode('$helper','hex') OR encode(pubkey::bytea,'hex') = '$helper'" 2>/dev/null || sudo docker exec "$(one postgres)" sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -At -c "$0"' "SELECT count(*) FROM relay_members WHERE pubkey::text LIKE '%$helper%'")
+          echo "member rows for the helper: $members"; [ "$members" = 1 ]
+          sudo test "$(sudo stat -c %a /opt/workrooms/helper.env)" = 600
+          node scripts/workrooms-server/helper.mjs root@127.0.0.1 status | tee "$RUNNER_TEMP/status.txt"
+          grep -qx 'signed-in=no' "$RUNNER_TEMP/status.txt"
+          if node scripts/workrooms-server/helper.mjs root@127.0.0.1 start; then echo "started without a sign-in"; exit 1; fi
+      - name: Installing again changes nothing
+        if: matrix.case == 'helper'
+        run: |
+          node scripts/workrooms-server/helper.mjs root@127.0.0.1 install "Scout" | tee "$RUNNER_TEMP/helper2.txt"
+          diff <(sed -n 's/^helper=//p' "$RUNNER_TEMP/helper.txt") <(sed -n 's/^helper=//p' "$RUNNER_TEMP/helper2.txt")
+      - name: Codex offers a device-code sign-in with no browser on the machine
+        if: matrix.case == 'helper'
+        run: |
+          cd /tmp
+          (sudo timeout 25 sh -c 'cd /opt/workrooms && WORKROOMS_ENV=/opt/workrooms/.env docker compose -p workrooms --env-file .env -f compose.yml -f compose.vps.yml -f compose.helper.yml run --rm --no-deps -T --entrypoint codex helper login --device-auth' 2>&1 || true) | sed -E 's/[A-Z0-9]{4}-[A-Z0-9]{4,5}/XXXX-XXXXX/g' | tee "$RUNNER_TEMP/device.txt"
+          grep -q -i -E 'https://[a-z.]*(openai|chatgpt)\.com' "$RUNNER_TEMP/device.txt"
+      - name: The runner starts Codex's adapter and reaches for the community
+        if: matrix.case == 'helper'
+        continue-on-error: true
+        run: |
+          # No sign-in and a certificate nothing here trusts: this only shows how far it gets.
+          cd /opt/workrooms 2>/dev/null || sudo sh -c 'cd /opt/workrooms'
+          (sudo timeout 40 sh -c 'cd /opt/workrooms && WORKROOMS_ENV=/opt/workrooms/.env docker compose -p workrooms --env-file .env -f compose.yml -f compose.vps.yml -f compose.helper.yml run --rm --no-deps -T -e BUZZ_ACP_LAZY_POOL=false helper' 2>&1 || true) | sed -E 's/[0-9a-f]{64}/…/g' | tail -40
+      - name: Remove it again
+        if: matrix.case == 'helper'
+        run: |
+          node scripts/workrooms-server/helper.mjs root@127.0.0.1 remove
+          sudo test ! -e /opt/workrooms/helper.env
+
+      - name: Phone linking answers, and the relay names it
+        run: |
+          node -e '
+            const host = process.env.HOSTNAME_UNDER_TEST;
+            const socket = new WebSocket(`wss://${host}/pair`);
+            const timer = setTimeout(() => { console.error("no answer"); process.exit(1); }, 10000);
+            socket.addEventListener("open", () => { console.log("wss://" + host + "/pair accepted a connection"); process.exit(0); });
+            socket.addEventListener("error", (e) => { console.error("refused", e.message ?? ""); process.exit(1); });
+          '
+          curl -sk -H 'Accept: application/nostr+json' "https://$HOSTNAME_UNDER_TEST/" | tee "$RUNNER_TEMP/info.json" | head -c 1500; echo
+          grep -o '"[a-z_]*pair[a-z_]*"[^,}]*' "$RUNNER_TEMP/info.json" || echo "(the relay's public description does not mention pairing)"
+          sudo docker compose -p workrooms ps --format 'table {{.Service}}\t{{.Status}}'
+      - name: Logs, if anything failed
+        if: failure()
+        run: |
+          for project in wr-source workrooms; do
+            for id in $(docker ps -aq --filter "label=com.docker.compose.project=$project"); do
+              echo "::group::$project $(docker inspect -f '{{index .Config.Labels "com.docker.compose.service"}} {{.State.Status}}' "$id")"
+              docker logs --tail 60 "$id" 2>&1 | sed -E 's/(PASSWORD|SECRET|KEY)=[^ ]+/\1=…/g' || true
+              echo "::endgroup::"
+            done
+          done
