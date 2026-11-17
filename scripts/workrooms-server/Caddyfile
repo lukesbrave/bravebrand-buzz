@@ -3,6 +3,10 @@
 }
 
 (workrooms) {
+	# Linking a phone (the pairing service in compose.vps.yml).
+	handle /pair {
+		reverse_proxy pairing:5000
+	}
 	@private path /admin /admin/* /api/admin /api/admin/* /api/v1/admin /api/v1/admin/* /operator /operator/* /metrics /health /_readiness /_liveness /_mesh/* /debug /debug/*
 	handle @private {
 		respond 404

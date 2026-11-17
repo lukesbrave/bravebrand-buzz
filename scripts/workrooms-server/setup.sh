@@ -86,8 +86,18 @@ saved() {
 
 WORKROOMS_ENV=$PWD/.env
 export WORKROOMS_ENV
-docker compose -p "${WORKROOMS_PROJECT:-workrooms}" --env-file .env \
-	-f compose.yml -f compose.vps.yml up -d --wait
+dc() {
+	docker compose -p "${WORKROOMS_PROJECT:-workrooms}" --env-file .env \
+		-f compose.yml -f compose.vps.yml "$@"
+}
+# A gateway that is already running keeps the Caddyfile it started with.
+running=$(dc ps -q gateway 2>/dev/null || true)
+dc up -d --wait
+routes=$(cksum <Caddyfile)
+if [ -n "$running" ] && [ "$(cat .caddyfile.applied 2>/dev/null || true)" != "$routes" ]; then
+	dc restart gateway
+fi
+echo "$routes" >.caddyfile.applied
 
 relay=$(curl --fail --silent --show-error --max-time 10 \
 	-H "Host: $host" -H "Accept: application/nostr+json" \

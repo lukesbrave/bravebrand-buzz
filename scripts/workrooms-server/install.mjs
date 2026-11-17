@@ -13,6 +13,7 @@ import { spawnSync } from "node:child_process";
 import { lookup } from "node:dns/promises";
 import { fileURLToPath } from "node:url";
 import { nip19 } from "nostr-tools";
+import { publicProblem } from "./checks.mjs";
 
 const [target, rawHost, rawOwner] = process.argv.slice(2);
 const host = rawHost?.toLowerCase();
@@ -129,32 +130,11 @@ if (!owner) {
 const relay = /^relay=([0-9a-f]{64})$/m.exec(output)?.[1];
 if (!relay) fail("The server did not report the community's identity.");
 
-// The same checks the app's first connection depends on, from this Mac.
+// The same checks the app's first connection and linking a phone depend on,
+// from this Mac.
 const origin = `https://${host}`;
-const reach = (path, init) =>
-  fetch(origin + path, { ...init, signal: AbortSignal.timeout(10_000) });
-let self;
-for (let waited = 0; waited <= 300 && self !== relay; waited += 5) {
-  self = await reach("/", { headers: { Accept: "application/nostr+json" } })
-    .then((response) => response.json())
-    .then(
-      (body) => body.self,
-      () => undefined,
-    );
-  if (self !== relay) await sleep(5_000);
-}
-if (self !== relay)
-  fail(
-    `${origin} is not answering as this community yet. The certificate may still be issuing: run the same command again in a minute.`,
-  );
-const anonymous = await reach("/query", { method: "POST", body: "{}" });
-if (anonymous.status !== 401)
-  fail(
-    `Expected ${origin} to refuse an anonymous read, got ${anonymous.status}.`,
-  );
-const operator = await reach("/operator/communities");
-if (operator.status !== 404)
-  fail(`Expected ${origin} to hide operator routes, got ${operator.status}.`);
+const problem = await publicProblem(host, relay);
+if (problem) fail(problem);
 
 console.log(
   `Workspace ready: ${origin}\nOwner: ${nip19.npubEncode(owner)}\nEnter ${origin} in the app to connect.`,

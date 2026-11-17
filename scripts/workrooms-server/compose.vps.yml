@@ -1,6 +1,26 @@
 # Public HTTPS for a community on a server its owner runs. Layered over
 # ../local-community/compose.yml; setup.sh places both beside this Caddyfile.
 services:
+  relay:
+    environment:
+      # Where the app sends a phone to be linked: the pairing service below.
+      BUZZ_PAIRING_RELAY_URL: wss://${BUZZ_DOMAIN:?set BUZZ_DOMAIN}/pair
+
+  # Buzz's own service for linking a phone, from the same image as the relay.
+  # The gateway publishes it at /pair.
+  pairing:
+    image: ${BUZZ_IMAGE:?set BUZZ_IMAGE}
+    entrypoint: ["/usr/local/bin/buzz-pair-relay"]
+    environment:
+      BUZZ_PAIR_RELAY_BIND_ADDR: 0.0.0.0:5000
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    mem_limit: 64m
+    pids_limit: 32
+    networks: [buzz-net]
+    restart: unless-stopped
+
   gateway:
     environment:
       BUZZ_DOMAIN: ${BUZZ_DOMAIN:?set BUZZ_DOMAIN}
