@@ -18,7 +18,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-24.04, ubuntu-24.04-arm]
-        case: [move, install, helper]
+        case: [move, install, agents]
     runs-on: ${{ matrix.os }}
     timeout-minutes: 60
     env:
@@ -120,7 +120,7 @@ jobs:
 
       # ---- install: a new, empty community on the server
       - name: Install a new community
-        if: matrix.case == 'install' || matrix.case == 'helper'
+        if: matrix.case == 'install' || matrix.case == 'agents'
         run: |
           node scripts/workrooms-server/install.mjs root@127.0.0.1 "$HOSTNAME_UNDER_TEST"
           node scripts/workrooms-server/install.mjs root@127.0.0.1 "$HOSTNAME_UNDER_TEST" "$OWNER"
@@ -136,57 +136,80 @@ jobs:
           fi
           cat "$RUNNER_TEMP/refused.txt"; grep -q "already hosts a different community" "$RUNNER_TEMP/refused.txt"
 
-      # ---- helper: an always-on agent beside the community
-      - name: Install the helper (builds Buzz's runner and Codex)
-        if: matrix.case == 'helper'
-        run: node scripts/workrooms-server/helper.mjs root@127.0.0.1 install "Scout" | tee "$RUNNER_TEMP/helper.txt"
-      - name: The four tools are in the image, at the pinned versions
-        if: matrix.case == 'helper'
+      # ---- agents: agents that run on the server, as the app's plugin reaches them
+      - name: Prepare the server for agents (builds Buzz's runner and Codex)
+        if: matrix.case == 'agents'
+        run: node scripts/workrooms-server/agents.mjs root@127.0.0.1 install
+      - name: The tools are in the image
+        if: matrix.case == 'agents'
         run: |
           run() { sudo docker run --rm --entrypoint "$1" workrooms-helper:local "${@:2}"; }
-          # Neither Buzz tool has a version flag: showing its help proves it runs.
-          run buzz-acp --help 2>&1 | sed -n '1,3p' || true
-          run buzz --help 2>&1 | sed -n '1,3p' || true
-          run sh -c 'command -v buzz-acp buzz codex codex-acp'
+          run sh -c 'command -v buzz-acp buzz codex codex-acp agent-start && cat /usr/local/bin/agent-start'
           run codex --version
-          run codex-acp --version 2>&1 | sed -n '1,2p' || true
-          run sh -c 'npm ls -g --depth 0 2>/dev/null | grep -E "codex"'
+          run buzz-acp --help 2>&1 | sed -n '1,2p' || true
           sudo docker image inspect workrooms-helper:local --format 'image size: {{.Size}} bytes'
-      - name: It has its own key, is admitted, and is not signed in yet
-        if: matrix.case == 'helper'
-        run: |
-          helper=$(sed -n 's/^helper=//p' "$RUNNER_TEMP/helper.txt")
-          echo "$helper" | grep -Eq '^[0-9a-f]{64}$'
-          one() { sudo docker ps -q --filter "label=com.docker.compose.project=workrooms" --filter "label=com.docker.compose.service=$1"; }
-          members=$(sudo docker exec "$(one postgres)" sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -At -c "$0"' "SELECT count(*) FROM relay_members WHERE pubkey = decode('$helper','hex') OR encode(pubkey::bytea,'hex') = '$helper'" 2>/dev/null || sudo docker exec "$(one postgres)" sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -At -c "$0"' "SELECT count(*) FROM relay_members WHERE pubkey::text LIKE '%$helper%'")
-          echo "member rows for the helper: $members"; [ "$members" = 1 ]
-          sudo test "$(sudo stat -c %a /opt/workrooms/helper.env)" = 600
-          node scripts/workrooms-server/helper.mjs root@127.0.0.1 status | tee "$RUNNER_TEMP/status.txt"
-          grep -qx 'signed-in=no' "$RUNNER_TEMP/status.txt"
-          if node scripts/workrooms-server/helper.mjs root@127.0.0.1 start; then echo "started without a sign-in"; exit 1; fi
-      - name: Installing again changes nothing
-        if: matrix.case == 'helper'
-        run: |
-          node scripts/workrooms-server/helper.mjs root@127.0.0.1 install "Scout" | tee "$RUNNER_TEMP/helper2.txt"
-          diff <(sed -n 's/^helper=//p' "$RUNNER_TEMP/helper.txt") <(sed -n 's/^helper=//p' "$RUNNER_TEMP/helper2.txt")
       - name: Codex offers a device-code sign-in with no browser on the machine
-        if: matrix.case == 'helper'
+        if: matrix.case == 'agents'
         run: |
-          cd /tmp
-          (sudo timeout 25 sh -c 'cd /opt/workrooms && WORKROOMS_ENV=/opt/workrooms/.env docker compose -p workrooms --env-file .env -f compose.yml -f compose.vps.yml -f compose.helper.yml run --rm --no-deps -T --entrypoint codex helper login --device-auth' 2>&1 || true) | sed -E 's/[A-Z0-9]{4}-[A-Z0-9]{4,5}/XXXX-XXXXX/g' | tee "$RUNNER_TEMP/device.txt"
+          (sudo timeout 25 docker run --rm -v workrooms-codex:/home/helper/.codex --entrypoint codex workrooms-helper:local login --device-auth 2>&1 || true) | sed -E 's/[A-Z0-9]{4}-[A-Z0-9]{4,5}/XXXX-XXXXX/g' | tee "$RUNNER_TEMP/device.txt"
           grep -q -i -E 'https://[a-z.]*(openai|chatgpt)\.com' "$RUNNER_TEMP/device.txt"
-      - name: The runner starts Codex's adapter and reaches for the community
-        if: matrix.case == 'helper'
-        continue-on-error: true
+          node scripts/workrooms-server/agents.mjs root@127.0.0.1 status | tee "$RUNNER_TEMP/status.txt"
+          grep -qx 'signed-in=no' "$RUNNER_TEMP/status.txt"
+      - name: The app's requests, as the plugin sends them, each inside five seconds
+        if: matrix.case == 'agents'
         run: |
-          # No sign-in and a certificate nothing here trusts: this only shows how far it gets.
-          cd /opt/workrooms 2>/dev/null || sudo sh -c 'cd /opt/workrooms'
-          (sudo timeout 40 sh -c 'cd /opt/workrooms && WORKROOMS_ENV=/opt/workrooms/.env docker compose -p workrooms --env-file .env -f compose.yml -f compose.vps.yml -f compose.helper.yml run --rm --no-deps -T -e BUZZ_ACP_LAZY_POOL=false helper' 2>&1 || true) | sed -E 's/[0-9a-f]{64}/…/g' | tail -40
-      - name: Remove it again
-        if: matrix.case == 'helper'
-        run: |
-          node scripts/workrooms-server/helper.mjs root@127.0.0.1 remove
-          sudo test ! -e /opt/workrooms/helper.env
+          owner=$(node --input-type=module -e 'import { decodeNpub } from "./scripts/workrooms-solo/common.mjs"; console.log(decodeNpub(process.env.OWNER));')
+          community="wss://$HOSTNAME_UNDER_TEST"
+          call() {
+            local t0 out ms; t0=$(date +%s%N)
+            out=$(printf '%s' "$1" | ssh -T -o BatchMode=yes root@127.0.0.1 'sh /opt/workrooms/agents.sh bridge')
+            ms=$(( ($(date +%s%N) - t0) / 1000000 ))
+            echo "$(printf '%s' "$1" | jq -r .op): ${ms} ms → $(printf '%s' "$out" | sed -E 's/[0-9a-f]{64}/…/g' | cut -c1-200)" >&2
+            [ "$ms" -lt 5000 ] || { echo "too slow for the app's five-second limit" >&2; exit 1; }
+            printf '%s' "$out"
+          }
+          req() { jq -cn --arg op "$1" --arg c "$community" "$2"; }
+
+          call '{"op":"status"}' | jq -e --arg c "$community" '.protocol == 1 and .community == $c and .signedIn == false and .harnesses == [["codex","Codex"]]'
+          call "$(req provision '{op:$op,harness:"codex",community:$c,name:"Scout",config:{instructions:""}}')" | jq -e '.error | test("not signed in")'
+          call "$(req provision '{op:$op,harness:"codex",community:"wss://other.invalid",name:"Scout"}')" | jq -e '.error | test("another workspace")'
+
+          # Stand in for a completed ChatGPT sign-in, which only a person can do.
+          sudo touch /opt/workrooms/agents/state/signed-in
+          call '{"op":"status"}' | jq -e '.signedIn == true'
+          agent=$(call "$(req provision '{op:$op,harness:"codex",community:$c,name:"Scout",config:{instructions:""}}')" | jq -er .pubkey)
+          again=$(call "$(req provision '{op:$op,harness:"codex",community:$c,name:"Scout",config:{instructions:""}}')" | jq -er .pubkey)
+          [ "$agent" = "$again" ] && echo "$agent" | grep -Eq '^[0-9a-f]{64}$'
+          sig=$(printf 'a%.0s' $(seq 128))
+
+          stranger=$(printf 'b%.0s' $(seq 64))
+          call "$(jq -cn --arg c "$community" --arg p "$agent" --arg o "$stranger" --arg s "$sig" '{op:"activate",harness:"codex",community:$c,pubkey:$p,name:"Scout",auth:["auth",$o,"",$s],config:{instructions:"Be brief."}}')" | jq -e '.error | test("not the owner")'
+          call "$(jq -cn --arg c "$community" --arg p "$agent" --arg o "$owner" --arg s "$sig" '{op:"activate",harness:"codex",community:$c,pubkey:$p,name:"Scout",auth:["auth",$o,"",$s],config:{instructions:"Be brief."}}')" | jq -e '. == {}'
+
+          dir=/opt/workrooms/agents/state/$agent
+          sudo test "$(sudo stat -c %a "$dir/env")" = 600 && sudo test "$(sudo stat -c %a "$dir/private")" = 600
+          sudo grep -q '^BUZZ_ACP_AGENT_COMMAND=codex-acp$' "$dir/env" && sudo grep -q "^BUZZ_ACP_AGENT_OWNER=$owner$" "$dir/env" && sudo grep -q "^BUZZ_RELAY_URL=$community$" "$dir/env" && sudo grep -q '^AGENT_NAME=Scout$' "$dir/env"
+          sudo tail -c 10 "$dir/seat/instructions.md" | grep -q 'Be brief.'
+          name=$(sudo docker ps -a --filter "label=workrooms.agent=$agent" --format '{{.Names}}'); [ -n "$name" ]
+          sleep 8
+          # No real certificate or sign-in here: this shows it starts and how far it gets.
+          sudo docker logs "$name" 2>&1 | sed -E 's/[0-9a-f]{64}/…/g' | tail -12
+          sudo docker logs "$name" 2>&1 | grep -q 'buzz-acp starting'
+          sudo docker inspect -f 'user={{.Config.User}} caps-dropped={{.HostConfig.CapDrop}} memory={{.HostConfig.Memory}}' "$name"
+
+          [ "$(call "$(req instructions "{op:\$op,harness:\"codex\",community:\$c,pubkey:\"$agent\"}")" | jq -er .instructions)" = "Be brief." ]
+          call "$(req set-instructions "{op:\$op,harness:\"codex\",community:\$c,pubkey:\"$agent\",instructions:\"Be thorough.\"}")" | jq -e '. == {}'
+          [ "$(call "$(req instructions "{op:\$op,harness:\"codex\",community:\$c,pubkey:\"$agent\"}")" | jq -er .instructions)" = "Be thorough." ]
+          call "$(req profile "{op:\$op,harness:\"codex\",community:\$c,pubkey:\"$agent\",name:\"Scout Two\"}")" | jq -e '. == {}'
+          sudo grep -q '^AGENT_NAME=Scout Two$' "$dir/env"
+          node scripts/workrooms-server/agents.mjs root@127.0.0.1 status
+          if node scripts/workrooms-server/agents.mjs root@127.0.0.1 uninstall; then echo "uninstalled with an agent still there"; exit 1; fi
+
+          call "$(req remove "{op:\$op,harness:\"codex\",community:\$c,pubkey:\"$agent\"}")" | jq -e '. == {}'
+          sudo test ! -e "$dir"
+          [ -z "$(sudo docker ps -a --filter label=workrooms.agent --format '{{.Names}}')" ]
+          node scripts/workrooms-server/agents.mjs root@127.0.0.1 uninstall
+          sudo test ! -e /opt/workrooms/agents/state
 
       - name: Phone linking answers, and the relay names it
         run: |
