@@ -107,7 +107,7 @@ INSTRUCTIONS
 	dc run --rm --no-deps -T -e "BUZZ_RELAY_URL=https://$host" --entrypoint buzz helper \
 		users set-profile --name "$name" \
 		--about "Always-on helper. Runs on this workspace's server and answers its owner." >/dev/null ||
-		echo "The helper is admitted, but its name could not be set yet. Run install again once it is signed in." >&2
+		echo "The helper is admitted, but its name could not be set. Run the same install command again." >&2
 	echo "helper=$public"
 	echo "Installed. Next: helper.sh sign-in"
 	;;
