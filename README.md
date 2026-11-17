@@ -342,7 +342,40 @@ If the new app will not open or cannot reach the workspace, put the old one back
 
 ## Take it with you
 
-A workspace on this computer cannot be reached from a phone or by a teammate. When they want either, the workspace moves to a small server they rent, with an address on a domain they own. That is a later lesson; do not attempt it from this guide. The move starts from a backup made with one of the commands above, so keeping a current backup is all they need to do to be ready. Until then, **Set up my Workrooms on a server** below creates a new, empty workspace on a server.
+A workspace on this computer cannot be reached from a phone or by a teammate. When they want either, it moves to a small server they rent, at an address on a domain they own. You may be their coding agent, or an agent they hired inside the app: the steps are the same.
+
+Before you start, tell them plainly what this costs, what comes with them and what does not, and let them decide.
+
+- **What it costs.** The server's monthly rent, which the provider shows before they pay, and a domain name if they do not own one.
+- **What comes with them.** Their key, their place as owner, every member, channel and message, and the files they uploaded.
+- **What does not, yet.**
+  - *Their agents.* A hired agent stays attached to the old address, so each one is hired again in the moved workspace and starts as a new hire.
+  - *Pictures inside old messages* may not show, although the files themselves are moved.
+  - *Backups.* The backup commands in this guide copy the workspace on this computer. A workspace on a server has no backup command yet: until it does, they turn on their provider's own server backups.
+- **What stays behind.** The copy on this computer is not changed, so they can go back to it.
+
+1. **Create the server and point a name at it.** Follow **Step 3 of 7 · Create the server** and **Step 4 of 7 · Point the name at the server** in the server guide below. They end with a server that has Docker on it and a DNS record for the address, such as `team.example.com`.
+2. **Back up the workspace.** Ask them to stop working in it for a few minutes, then run the command under **Backups** and note the folder it made. Anything posted after this backup stays on this computer only.
+3. **Move it.** Give the same server and address as in step 1, and the backup folder:
+
+   ```sh
+   bin/node scripts/workrooms-server/move.mjs root@workrooms team.example.com "/path/to/Workrooms backup 2026-11-14 0930"
+   ```
+
+   It waits for the address to reach the server, copies the backup over, rebuilds the workspace there and checks it from this computer: the address must answer as this workspace, refuse an anonymous read, hide its operator routes and accept a phone link. It never overwrites a workspace already on the server. If it stops, the server is left empty and the same command can be run again.
+4. **They connect to the new address.** In the app they open the community button at the top right, choose **Join a community**, and enter the address the command printed, such as `https://team.example.com`. They are let in as the owner, because it is the same workspace and the same key. Have them check that their channels and messages are there, and that **Settings → Membership** shows them as **Owner**.
+5. **Stop the copy on this computer,** so nothing new is written to it by mistake. Its data stays in Docker, and the step 4 setup command starts it again if they ever want it back.
+
+   ```sh
+   "/Applications/Docker.app/Contents/Resources/bin/docker" compose -p workrooms stop
+   ```
+
+   **On Windows:** `docker compose -p workrooms stop`.
+
+   If a weekly encrypted backup is set up, turn its schedule off too, because it would keep copying the stopped workspace: `bin/node scripts/workrooms-solo/offsite.mjs schedule off`.
+6. **They hire their agents again,** in the moved workspace, the same way they hired them the first time.
+7. **They link their phone.** In the app: **Settings → Pair mobile**. It shows a QR code. They scan it with the Buzz app on their phone and confirm the code both screens show. The phone then signs in as them, with their key.
+8. **Update `My Workrooms.md`:** the new address; the server's provider and that its files are in `/opt/workrooms` on the server; that the key is unchanged; that the copy on this computer is stopped, and where its last backup is.
 
 # Set up my Workrooms on a server
 
