@@ -1,0 +1,31 @@
+# An always-on helper agent beside the community (helper.sh). Layered over
+# compose.yml and compose.vps.yml once helper.sh has made helper.env.
+services:
+  helper:
+    build:
+      context: ./helper
+    image: workrooms-helper:local
+    env_file:
+      - ./helper.env
+    environment:
+      # The public address, so the relay knows which community is meant. The
+      # name resolves to this server itself, never out to the internet.
+      BUZZ_RELAY_URL: wss://${BUZZ_DOMAIN:?set BUZZ_DOMAIN}
+    extra_hosts:
+      - "${BUZZ_DOMAIN}:host-gateway"
+    volumes:
+      - workrooms-helper-home:/home/helper
+    depends_on:
+      relay:
+        condition: service_healthy
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    mem_limit: 1g
+    pids_limit: 256
+    networks: [buzz-net]
+    restart: unless-stopped
+
+volumes:
+  workrooms-helper-home:
+    labels:
+      com.buzz.volume: helper-home

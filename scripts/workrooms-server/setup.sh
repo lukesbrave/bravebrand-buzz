@@ -86,13 +86,17 @@ saved() {
 
 WORKROOMS_ENV=$PWD/.env
 export WORKROOMS_ENV
+# The always-on helper is part of the same project once helper.sh installed it.
+helper=
+if [ -f compose.helper.yml ] && [ -s helper.env ]; then helper="-f compose.helper.yml"; fi
 dc() {
+	# shellcheck disable=SC2086
 	docker compose -p "${WORKROOMS_PROJECT:-workrooms}" --env-file .env \
-		-f compose.yml -f compose.vps.yml "$@"
+		-f compose.yml -f compose.vps.yml $helper "$@"
 }
 # A gateway that is already running keeps the Caddyfile it started with.
 running=$(dc ps -q gateway 2>/dev/null || true)
-dc up -d --wait
+dc up -d --wait relay gateway pairing
 routes=$(cksum <Caddyfile)
 if [ -n "$running" ] && [ "$(cat .caddyfile.applied 2>/dev/null || true)" != "$routes" ]; then
 	dc restart gateway
