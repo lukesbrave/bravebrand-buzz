@@ -144,7 +144,7 @@ jobs:
         if: matrix.case == 'helper'
         run: |
           run() { sudo docker run --rm --entrypoint "$1" workrooms-helper:local "${@:2}"; }
-          run buzz-acp --version
+          run buzz-acp --help | head -4
           run buzz --version
           run codex --version
           run codex-acp --version || run sh -c 'ls -la /usr/local/bin/codex-acp && npm ls -g --depth 0'
