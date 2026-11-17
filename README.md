@@ -347,9 +347,9 @@ A workspace on this computer cannot be reached from a phone or by a teammate. Wh
 Before you start, tell them plainly what this costs, what comes with them and what does not, and let them decide.
 
 - **What it costs.** The server's monthly rent, which the provider shows before they pay, and a domain name if they do not own one.
-- **What comes with them.** Their key, their place as owner, every member, channel and message, and the files they uploaded.
+- **What comes with them.** Their key, their place as owner, every member, channel and message, and the files they uploaded. Their agents come too, with everything each one remembers: an agent's memory is kept in the workspace, so it moves with it.
 - **What does not, yet.**
-  - *Their agents.* A hired agent stays attached to the old address, so each one is hired again in the moved workspace and starts as a new hire.
+  - *Each agent has to be brought across once* (step 6), because this computer still has it filed under the old address. It is the same agent with the same memory, but its open conversations start fresh. Nobody has yet changed an agent's instructions or settings after a move: expect to solve a snag there together.
   - *Pictures inside old messages* may not show, although the files themselves are moved.
   - *Backups.* The backup commands in this guide copy the workspace on this computer. A workspace on a server has no backup command yet: until it does, they turn on their provider's own server backups.
 - **What stays behind.** The copy on this computer is not changed, so they can go back to it.
@@ -366,7 +366,7 @@ Before you start, tell them plainly what this costs, what comes with them and wh
 4. **They connect to the new address.** In the app they open the community button at the top right, choose **Join a community**, and enter the address the command printed, such as `https://team.example.com`. They are let in as the owner, because it is the same workspace and the same key. Have them check that their channels and messages are there, and that **Settings → Membership** shows them as **Owner**.
 5. **Stop the copy on this computer,** so nothing new is written to it by mistake. Its data stays in Docker, and the step 4 setup command starts it again if they ever want it back.
 
-   **If you are running inside the app,** you were hired in the copy on this computer, so stopping it cuts you off from them. Before you run the command, do step 8, then say: "After this I can no longer answer you here. Open the moved workspace, hire me again there as in step 6, and link your phone from Settings → Pair mobile." Then run the command as your last act.
+   **If you are running inside the app,** you were hired in the copy on this computer, so stopping it cuts you off from them. Before you run the command, do step 8, then say: "After this I can no longer answer you here. Open the moved workspace, bring me across with Agents → Import an agent, as in step 6, and link your phone from Settings → Pair mobile." Then run the command as your last act.
 
    ```sh
    "/Applications/Docker.app/Contents/Resources/bin/docker" compose -p workrooms stop
@@ -375,7 +375,7 @@ Before you start, tell them plainly what this costs, what comes with them and wh
    **On Windows:** `docker compose -p workrooms stop`.
 
    If a weekly encrypted backup is set up, turn its schedule off too, because it would keep copying the stopped workspace: `bin/node scripts/workrooms-solo/offsite.mjs schedule off`.
-6. **They hire their agents again,** in the moved workspace, the same way they hired them the first time.
+6. **They bring their agents across.** In the moved workspace they open **Agents** and choose **Import an agent**, which lists the agents they have in their other workspaces, and pick each one. It is the same agent, with the same key, so its profile, its channels and its memory are already there. Two things to say plainly: do not hire the agent again from the team page, because that makes a second, new agent that remembers nothing; and do not remove the agent from the old workspace, because its settings are still kept there.
 7. **They link their phone.** In the app: **Settings → Pair mobile**. It shows a QR code. They scan it with the Buzz app on their phone and confirm the code both screens show. The phone then signs in as them, with their key.
 8. **Update `My Workrooms.md`:** the new address; the server's provider and that its files are in `/opt/workrooms` on the server; that the key is unchanged; that the copy on this computer is stopped, and where its last backup is.
 
