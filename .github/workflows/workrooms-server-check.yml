@@ -151,7 +151,8 @@ jobs:
       - name: Codex offers a device-code sign-in with no browser on the machine
         if: matrix.case == 'agents'
         run: |
-          (sudo timeout 25 docker run --rm -v workrooms-codex:/home/helper/.codex --entrypoint codex workrooms-helper:local login --device-auth 2>&1 || true) | sed -E 's/[A-Z0-9]{4}-[A-Z0-9]{4,5}/XXXX-XXXXX/g' | tee "$RUNNER_TEMP/device.txt"
+          # Codex waits for a person; give it time to print the code, then stop it for certain.
+          (sudo timeout -k 2 20 docker run --rm --name codex-sign-in-check -v workrooms-codex:/home/helper/.codex --entrypoint codex workrooms-helper:local login --device-auth 2>&1 || true; sudo docker rm -f codex-sign-in-check >/dev/null 2>&1 || true) | sed -E 's/[A-Z0-9]{4}-[A-Z0-9]{4,5}/XXXX-XXXXX/g' | tee "$RUNNER_TEMP/device.txt"
           grep -q -i -E 'https://[a-z.]*(openai|chatgpt)\.com' "$RUNNER_TEMP/device.txt"
           node scripts/workrooms-server/agents.mjs root@127.0.0.1 status | tee "$RUNNER_TEMP/status.txt"
           grep -qx 'signed-in=no' "$RUNNER_TEMP/status.txt"
