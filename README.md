@@ -295,6 +295,51 @@ They then approve the certificate prompt as in step 4, install the app as in ste
 - **Someone who took over this computer could delete the copies**, in a cloud folder or in the bucket, because this computer is allowed to remove old backups. They could not read them.
 - **The file does not depend on this project.** It is a standard age file holding a standard tar. With the backup key in a file, two free tools open it anywhere: `age -d -i key.txt "Workrooms backup ….tar.age" | tar -x`. Inside are the database (a PostgreSQL dump), the uploaded files, the git data and the workspace's settings.
 
+## Updating to a newer version
+
+For when they ask to update their Workrooms. You may be their coding agent, or an agent they hired inside the app. The steps are the same; the one difference is marked **If you are running inside the app**.
+
+The app never updates by itself. It stays on the version it was built from until they ask, so their screens keep matching the course. Updating builds the app again from the newer source: about as long as the first build, and about 13 GB of disk again if the build's working files were deleted. Their workspace, messages, key and agents are not touched: those live in Docker and in the app's own data, not in the app.
+
+Open by telling them the plan: you check whether there is anything newer, make a backup, build the new app in the background while they keep working, and then they quit the app and open it again.
+
+1. **Find their copy of the source.** Their ownership note, `My Workrooms.md`, names the folder. If you cannot find the note, look in their home folder for a folder containing `scripts/bravebrand-client.sh`. Run everything below from that folder.
+2. **Check whether there is anything newer.** `git rev-parse HEAD` is the version they have, and `git ls-remote origin HEAD` is the newest. If the two match, tell them they are up to date and stop. If `git status --porcelain` lists anything, stop and ask: their copy of the source has been edited.
+3. **Check their key is backed up.** Ask them to confirm that their private key, the one starting with `nsec`, is saved in their password manager, as in step 5 of the setup. Do not ask to see it. The new app is a fresh build, so macOS may ask their permission before it lets the new app read the key the old one saved. With the recovery copy saved, the worst case is pasting the key back in.
+4. **Back up the workspace.** Run the command under **Backups** and tell them where the folder is.
+5. **Fetch the newer source and build it.** The build is the same command as step 1 of the setup, with the same **On an Intel Mac** and **On Windows** differences. Start it in the background and tell them it takes about twenty minutes.
+
+   ```sh
+   git fetch --depth 1 origin HEAD && git checkout FETCH_HEAD
+   bin/rustup toolchain install && ./scripts/bravebrand-client.sh --workrooms
+   ```
+
+6. **Put the new app in place.** When the build finishes, check it, move the installed app aside and copy the new one in. The old app goes into their backups folder, so they can go back. They can leave the app open while you do this.
+
+   ```sh
+   app="Digital Home Workrooms.app"
+   bundle="target/debug/bundle/macos/$app"
+   installed="/Applications/$app"
+   [ -d "$installed" ] || installed="$HOME/Applications/$app"
+   kept="$HOME/Documents/Workrooms Backups/App before update $(date +%Y-%m-%d-%H%M).app"
+   codesign --verify --deep --strict "$bundle" &&
+     mkdir -p "$HOME/Documents/Workrooms Backups" &&
+     mv "$installed" "$kept" &&
+     ditto "$bundle" "$installed" &&
+     codesign --verify --deep --strict "$installed"
+   ```
+
+   **On Windows:** have them close the app first, then run the new installer from `target\debug\bundle\nsis` as in step 3 of the setup. It installs over the old one.
+
+7. **They restart the app.** Ask them to quit Digital Home Workrooms and open it again from Applications straight away. **If you are running inside the app,** say this first, because quitting stops you: "When you quit the app I will stop mid-sentence. That is expected, and the update is already installed. Open the app again and say hello to me."
+8. **Check it came back.** When they are back in:
+   - If macOS asked whether the app may use something saved in their keychain, they enter their Mac password and choose **Always Allow**.
+   - If the app opens on its welcome screen instead of their workspace, they choose **Set up my workspace**, then **Use an existing key**, paste their recovery copy into the app (never into this chat), and connect to the same address as before.
+   - Run the step 4 setup command again with their public key, which they copy from **Settings → Identity** (it starts with `npub1`). It brings the workspace's own software to the version this guide uses and repeats the checks.
+9. **Tidy up.** Write the new version into `My Workrooms.md`. Offer to delete the build's working files to give the disk space back. Once they are happy with the new version, offer to delete the old app from their backups folder.
+
+If the new app will not open or cannot reach the workspace, put the old one back: quit the app, move the new one out of Applications, and move the kept one back under its original name. Nothing in the workspace was changed by the update.
+
 ## Take it with you
 
 A workspace on this computer cannot be reached from a phone or by a teammate. When they want either, the workspace moves to a small server they rent, with an address on a domain they own. That is a later lesson; do not attempt it from this guide. The move starts from a backup made with one of the commands above, so keeping a current backup is all they need to do to be ready. Until then, **Set up my Workrooms on a server** below creates a new, empty workspace on a server.
