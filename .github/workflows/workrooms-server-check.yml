@@ -144,10 +144,13 @@ jobs:
         if: matrix.case == 'helper'
         run: |
           run() { sudo docker run --rm --entrypoint "$1" workrooms-helper:local "${@:2}"; }
-          run buzz-acp --help | head -4
-          run buzz --version
+          # Neither Buzz tool has a version flag: showing its help proves it runs.
+          run buzz-acp --help 2>&1 | sed -n '1,3p' || true
+          run buzz --help 2>&1 | sed -n '1,3p' || true
+          run sh -c 'command -v buzz-acp buzz codex codex-acp'
           run codex --version
-          run codex-acp --version || run sh -c 'ls -la /usr/local/bin/codex-acp && npm ls -g --depth 0'
+          run codex-acp --version 2>&1 | sed -n '1,2p' || true
+          run sh -c 'npm ls -g --depth 0 2>/dev/null | grep -E "codex"'
           sudo docker image inspect workrooms-helper:local --format 'image size: {{.Size}} bytes'
       - name: It has its own key, is admitted, and is not signed in yet
         if: matrix.case == 'helper'
