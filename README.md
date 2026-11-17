@@ -366,6 +366,8 @@ Before you start, tell them plainly what this costs, what comes with them and wh
 4. **They connect to the new address.** In the app they open the community button at the top right, choose **Join a community**, and enter the address the command printed, such as `https://team.example.com`. They are let in as the owner, because it is the same workspace and the same key. Have them check that their channels and messages are there, and that **Settings → Membership** shows them as **Owner**.
 5. **Stop the copy on this computer,** so nothing new is written to it by mistake. Its data stays in Docker, and the step 4 setup command starts it again if they ever want it back.
 
+   **If you are running inside the app,** you were hired in the copy on this computer, so stopping it cuts you off from them. Before you run the command, do step 8, then say: "After this I can no longer answer you here. Open the moved workspace, hire me again there as in step 6, and link your phone from Settings → Pair mobile." Then run the command as your last act.
+
    ```sh
    "/Applications/Docker.app/Contents/Resources/bin/docker" compose -p workrooms stop
    ```
