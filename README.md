@@ -385,41 +385,41 @@ The move needs the newest version of this guide's files. If their copy of the so
    If the phone says it could not reach the pairing relay, have them open the workspace's address in the phone's browser. If the browser cannot find it either, the phone has remembered a failed lookup of the new address, which is common with an address made minutes ago: they turn Airplane mode on, wait a few seconds, turn it off, then make a fresh code in **Settings → Pair mobile** and scan again. If that does not clear it, they try the other network (Wi-Fi or mobile data) and switch off any VPN.
 8. **Update `My Workrooms.md`:** the new address; the server's provider and that its files are in `/opt/workrooms` on the server; that the key is unchanged; that the copy on this computer is stopped, and where its last backup is.
 
-## An always-on helper on the server
+## Agents that run on the server
 
-For when their workspace is on a server (see **Take it with you**) and they want one agent that answers while their computer is off. Agents hired in the app run on their computer, so they can open its files, and they stop when it does. The helper is the other kind: it runs on the server, it is always on, and it cannot see their computer.
+For when their workspace is on a server (see **Take it with you**) and they want an agent that keeps working while their computer is off. Agents hired in the app normally run on their computer: they can open its files, and they stop when it does. An agent on the server is the other kind. It is in their team on the **Agents** page like any other, marked as running remotely, and it cannot see their computer. BraveBrand's own agents stay on their computer, because their work needs its files.
 
 Say these three things before you start, and let them decide:
 
-- **What it runs on.** OpenAI's Codex, signed in with their own ChatGPT account. Whether their ChatGPT plan allows an agent that runs unattended on a server is for them to check in OpenAI's terms; this guide does not decide it for them. An OpenAI API key, which is billed per use, is the other way in.
-- **What it can do.** It answers its owner, and only its owner, in the workspace. It works in its own folder on the server. It has no access to their computer, their Digital Home accounts or the other agents' files.
-- **What it costs the server.** About a gigabyte of memory while it works, on the server they already rent.
+- **What it runs on.** OpenAI's Codex, signed in with their own ChatGPT account. Whether their ChatGPT plan allows an agent that runs unattended on a server is for them to check in OpenAI's terms; this guide does not decide it for them.
+- **What it can do.** It answers its owner, and only its owner, in the workspace. It works in its own folder on the server. It has no access to their computer or to the other agents' files.
+- **What it needs.** About a gigabyte of the server's memory for each agent while it works.
 
-1. **Install it.** Pick a name with them. The first build takes ten to twenty minutes, so start it and let them carry on:
-
-   ```sh
-   bin/node scripts/workrooms-server/helper.mjs root@workrooms install "Scout"
-   ```
-
-   It builds the helper on the server, makes the helper its own key there, admits it to their workspace and names it. Their own key is never sent. Running the same command again is safe.
-2. **They sign it in.** Run the command below in the background and watch its output. It prints a web address and a one-time code:
+1. **Prepare the server.** The first build takes ten to twenty minutes, so start it in the background and let them carry on:
 
    ```sh
-   bin/node scripts/workrooms-server/helper.mjs root@workrooms sign-in
+   bin/node scripts/workrooms-server/agents.mjs root@workrooms install
    ```
 
-   Give them the address and the code in a code block. They open the address on their own computer, sign in to ChatGPT themselves and enter the code. Never ask for their ChatGPT password. When they have done it, the command finishes and starts the helper.
-3. **They say hello.** In the app they start a new message, pick the helper by its name and write to it. It answers within a minute the first time. If it does not, read `helper.mjs root@workrooms logs` and `status`.
-4. **Add it to `My Workrooms.md`:** the helper's name; that it runs on the server under the name `helper`, signed in to their ChatGPT account; and the commands below.
+2. **They sign Codex in.** Run this in the background and watch its output. It prints a web address and a one-time code:
 
-Looking after it, each as `bin/node scripts/workrooms-server/helper.mjs root@workrooms …`:
+   ```sh
+   bin/node scripts/workrooms-server/agents.mjs root@workrooms sign-in
+   ```
 
-- `status` says whether it is signed in and running; `logs` shows its recent activity.
-- `stop` and `start` turn it off and on.
-- `sign-in` again if ChatGPT signs it out.
-- `remove` stops it, takes it out of the workspace and deletes its key and its folder.
+   Give them the address and the code in a code block. They open the address on their own computer, sign in to ChatGPT themselves and enter the code. Never ask for their ChatGPT password. Every agent on the server shares this one sign-in.
+3. **They update the BraveBrand Team plugin,** which is what shows the server to the app: **Settings → Plugins → BraveBrand Team → Check for updates → Update**. The app asks them to approve one new permission, to reach their server over SSH as `workrooms`. That is the same login entry step 3 of the server guide put in `~/.ssh/config`. Then they quit the app and open it again.
+4. **They create the agent.** In the app: **Agents → New agent**. They give it a name and choose **My server · Codex** as the **Harness**, write any instructions, and create it. It appears in their team, running on the server.
+5. **They say hello,** then close their computer and write to it from their phone.
+6. **Add it to `My Workrooms.md`:** that agents run on the server, signed in to their ChatGPT account, and the commands below.
 
-Its instructions are one file on the server, in the helper's own folder. To change how it behaves, ask them what they want, edit that file for them over SSH, and restart the helper.
+If **My server · Codex** is not offered, check from this computer that `ssh -o BatchMode=yes workrooms true` succeeds with no question asked, then have them reopen the app. If creating the agent reports that Codex is not signed in, do step 2 again.
+
+Looking after them, each as `bin/node scripts/workrooms-server/agents.mjs root@workrooms …`:
+
+- `status` says whether Codex is signed in and lists each agent; `logs` shows their recent activity.
+- `sign-in` again if ChatGPT signs the server out.
+- Agents are renamed, instructed and deleted in the app, like any other agent.
 
 # Set up my Workrooms on a server
 
