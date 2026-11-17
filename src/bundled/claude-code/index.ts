@@ -21,6 +21,7 @@ import type { AgentHandle } from "../../features/agents/service";
 import { ClaudeDefaults } from "./defaults";
 import { ClaudeRuntime, type Config, config, DEFAULT_CONFIG } from "./runtime";
 import { ClaudeSetup, withScript } from "./setup";
+import { WORKROOMS, WorkroomsClaudeAuth } from "./workrooms-auth";
 import { createTabs } from "./tabs";
 import { targetKey } from "../../features/navigation/targets";
 import type { ClaudeConnection } from "./ClaudeSettings";
@@ -45,7 +46,12 @@ export const apply: PluginModule["apply"] = (ctx) => {
   const typeKey = `${ctx.pluginOwner?.id ?? "buzz.claude-code"}/${TYPE_ID}`;
   const spawn = host.spawn && withScript(host.spawn.bind(host));
   const readFile = host.readFile?.bind(host);
-  const setup = new ClaudeSetup(spawn, (input) => host.request(input));
+  const setup = new ClaudeSetup(
+    spawn,
+    (input) => host.request(input),
+    // A Workrooms build signs in with a Claude account (`workrooms-auth.ts`).
+    WORKROOMS ? new WorkroomsClaudeAuth(spawn) : undefined,
+  );
   // Older replacement auth implementations need not provide key management.
   const { Settings } = setup.auth as {
     Settings?: ComponentType<{

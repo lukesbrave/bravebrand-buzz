@@ -119,9 +119,9 @@ export class ClaudeAuth {
   /** Which way this build authenticates. */
   readonly id = "buzz-claude-auth:api-key";
   /** What the agent type's row asks for while Claude cannot run. */
-  readonly attentionLabel = "Add Claude API key";
+  readonly attentionLabel: string = "Add Claude API key";
   /** Ends "Claude 2.1.0 …" while Claude cannot run. */
-  readonly needs = "needs an Anthropic API key";
+  readonly needs: string = "needs an Anthropic API key";
   /** An interactive sign-in setup runs as its step, when there is one. */
   readonly signIn: ((step: Step) => Promise<void>) | undefined = undefined;
   private saved: Promise<boolean> | undefined;

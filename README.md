@@ -126,6 +126,15 @@ Then, before anything else:
 
 They now own a working workspace and can hire their first agent. On Windows that means a Goose or Pi agent, as the table at the top says.
 
+## Their first agent
+
+On a Mac, their first agent can run on the Claude subscription they already pay for. In the app they open **Agents**, choose **Create your first agent**, give it a name and pick **Claude** as the **Harness**. Two buttons then appear beside it, one after the other:
+
+1. **Install integration** downloads the app's own copy of Claude (about 250 MB, once).
+2. **Sign in** opens **Set up Claude**. They choose **Sign in** there and their browser opens Claude's own sign-in page, where they sign in themselves with the account that has their subscription. If this computer is already signed in to Claude Code, this button never appears and they carry straight on.
+
+Then they pick a model and choose **Create agent**. Never ask for their Claude password or sign in for them. They do not need an API key: the key box in the same window is for people who would rather pay Anthropic per use.
+
 ## Keeping it running
 
 The workspace is on whenever Docker is running, and survives the computer sleeping. If the app says it cannot reach the workspace:
@@ -419,7 +428,7 @@ The member build is Digital Home Workrooms: run `scripts/bravebrand-client.sh --
 
 # BraveBrand Buzz pilot
 
-This Mac pilot includes the Claude Code account sign-in from upstream [pull request 2995](https://github.com/block/buzz-app/pull/2995), pinned at `23a7fbdbc`. The client uses the account the owner signs into through Claude Code. The pilot build has its own app identifier and URL scheme.
+This Mac pilot signs in to Claude with the owner's Claude account, through the sign-in Buzz leaves to a build (`src/bundled/claude-code/workrooms-auth.ts`). A Claude setup already on the computer is used as it is. The pilot build has its own app identifier and URL scheme.
 
 From this branch, build the local Mac app with:
 
