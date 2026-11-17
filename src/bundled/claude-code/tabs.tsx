@@ -23,6 +23,16 @@ import { Dialog } from "../../shared/design-system/ui/Dialog";
 import { useToastNotification } from "../../shared/design-system/ui/Toast";
 import { Accordion } from "../../shared/design-system/ui/Accordion";
 import { ModelPicker } from "../../features/agents/ModelPicker";
+import { AISettings, runsOnDetails } from "../../features/agents/AISettings";
+import {
+  candidatesFor,
+  followRecommended,
+  offRecommended,
+  onRecommended,
+  type RecommendedRun,
+  recommendedRun,
+  withRecommended,
+} from "../../features/agents/recommended";
 import {
   ConversationName,
   OpenedConversation,
@@ -34,7 +44,10 @@ import type {
   AgentViewProps,
 } from "../../features/agents/service";
 import { PanelSubview } from "../../features/panels/PanelSubview";
-import { CircleNotchIcon } from "../../shared/design-system/icons";
+import {
+  CircleNotchIcon,
+  ClaudeLogoIcon,
+} from "../../shared/design-system/icons";
 import { Button } from "../../shared/design-system/ui/Button";
 import { Field } from "../../shared/design-system/ui/Field";
 import { Input } from "../../shared/design-system/ui/Input";
@@ -224,38 +237,6 @@ function ClaudeSignIn({
   );
 }
 
-/** While `claude auth login` runs: the code its browser page may show to
- * paste back. Not a form: it sits inside agent creation's and Settings' own. */
-function SignInCode({ setup }: { setup: ClaudeSetup }) {
-  const [code, setCode] = useState("");
-  const send = () => {
-    if (!code.trim()) return;
-    void setup.answer(code.trim());
-    setCode("");
-  };
-  return (
-    <Field
-      label="Sign-in code"
-      description="If the browser shows a code to paste, enter it here."
-    >
-      <div className="flex items-center gap-2">
-        <Input
-          value={code}
-          onValueChange={setCode}
-          onKeyDown={(event) => {
-            if (event.key !== "Enter" || event.nativeEvent.isComposing) return;
-            event.preventDefault();
-            send();
-          }}
-        />
-        <Button type="button" disabled={!code.trim()} onClick={send}>
-          Send
-        </Button>
-      </div>
-    </Field>
-  );
-}
-
 function ClaudeSetupPanel({
   setup,
   disabled = false,
@@ -376,13 +357,29 @@ export function createTabs({
   defaults,
   runtime,
   openSetup,
+  recommended = recommendedRun("claude-code", (candidate) =>
+    setup.offers(candidate),
+  ),
 }: Readonly<{
   setup: ClaudeSetup;
   defaults: ClaudeDefaults;
   runtime: ClaudeRuntime;
   /** Opens Claude's setup in Settings → Agent setup. */
   openSetup?: () => void;
+  /** What agents on Recommended run on; the plugin shares its runtime's. */
+  recommended?: RecommendedRun;
 }>) {
+  /** What an agent on Recommended runs on, found once it is shown on it. */
+  function useRecommended(on: boolean) {
+    const resolved = useSyncExternalStore(
+      recommended.subscribe,
+      recommended.current,
+    );
+    useEffect(() => {
+      if (on) void recommended.find();
+    }, [on]);
+    return resolved;
+  }
   /** Whether `agent` runs on an execution target; undefined while that is
    * being resolved, and for no agent. */
   function useRemote(agent: AgentViewProps<Config>["agent"] | undefined) {
@@ -440,7 +437,17 @@ export function createTabs({
     onReadyChange,
     ...props
   }: AgentCreateProps<Config>) {
-    const current = readConfig(config);
+    // A pick here takes the agent off Recommended, from what it runs on; a
+    // remote target runs it on its own default.
+    const execution = useRemote(props.agent);
+    const resolved = useRecommended(onRecommended(config));
+    const current = offRecommended(
+      followRecommended(
+        config,
+        readConfig(config),
+        execution?.remote ? null : resolved,
+      ),
+    );
     const state = useSetupCatalog();
     const providerDefaults = useSyncExternalStore(
       defaults.subscribe,
@@ -672,26 +679,13 @@ export function createTabs({
                 <Button
                   size="sm"
                   variant="prominent"
-                  // A check under way would skip the one sign-in ends with.
-                  disabled={disabled || !!state.running || state.checking}
+                  disabled={disabled || !!state.running}
                   onClick={() => void setup.run("sign-in")}
                 >
                   Sign in
                 </Button>
               </div>
             )}
-            {/* Where `claude auth login` prints its link when no browser
-             * opens, and why a sign-in failed. */}
-            {state.output && state.running !== "install" && (
-              <div
-                role="log"
-                aria-label="Setup output"
-                className="m-0 max-h-60 overflow-auto whitespace-pre-wrap text-body-sm text-subtle"
-              >
-                {state.output}
-              </div>
-            )}
-            {signingIn && <SignInCode setup={setup} />}
             <SignIn setup={setup} disabled={disabled} />
           </div>
         </Dialog>
@@ -824,11 +818,7 @@ export function createTabs({
   function ProviderDialogBody({ onClose }: { onClose(): void }) {
     const state = useSetupCatalog();
     const status = state.status;
-    // Switching to the account signs in from a ready Claude.
-    const ready =
-      status?.state === "ready" &&
-      !state.checking &&
-      state.running !== "sign-in";
+    const ready = status?.state === "ready" && !state.checking;
     const signingIn =
       state.running === "sign-in" ||
       (status?.state === "signed-out" && !state.running);
@@ -854,6 +844,19 @@ export function createTabs({
           : status?.state === "signed-out" && setup.auth.signIn
             ? ({ step: "sign-in", label: "Sign in" } as const)
             : undefined;
+    // Looks again for a setup made with the Claude CLI meanwhile.
+    const refreshing =
+      keyEntry && status?.state === "signed-out" && !state.running;
+    const done = useRef<HTMLButtonElement>(null);
+    const refreshFocused = useRef(false);
+    // Finding a setup removes Refresh, which WebKit leaves focus outside the
+    // dialog for: hand it to Done, unless the person has moved it themselves.
+    useEffect(() => {
+      if (refreshing || !refreshFocused.current) return;
+      refreshFocused.current = false;
+      const active = document.activeElement;
+      if (!active || active === document.body) done.current?.focus();
+    }, [refreshing]);
     const latestOutputLine = state.output
       .replaceAll("\r", "\n")
       .split("\n")
@@ -892,19 +895,6 @@ export function createTabs({
               </p>
             </div>
           )}
-          {state.running === "sign-in" && (
-            <p
-              role="status"
-              className="m-0 flex items-center gap-2 text-body-sm"
-            >
-              <CircleNotchIcon
-                size={16}
-                aria-hidden="true"
-                className="motion-safe:animate-spin"
-              />
-              Waiting for Claude Code sign-in…
-            </p>
-          )}
           {status?.state === "missing" && !state.running && (
             <p className="m-0 text-body-sm text-subtle">
               Downloads Buzz's own copy of Claude (about 250 MB) and keeps it on
@@ -921,7 +911,6 @@ export function createTabs({
               {state.output}
             </div>
           )}
-          {state.running === "sign-in" && <SignInCode setup={setup} />}
           {signingIn && <SignIn setup={setup} onSaved={onClose} />}
           {status?.state === "error" && (
             <p className="m-0 text-body-sm text-subtle">
@@ -933,11 +922,29 @@ export function createTabs({
         {/* Kept through a routine check, so a paste or save goes on. Saving
             the key closes the dialog while the key is all it edits; once it
             has other settings, saving should leave it open. */}
-        {status?.state === "ready" && state.running !== "sign-in" && (
+        {status?.state === "ready" && (
           <SignedIn setup={setup} onSaved={onClose} />
         )}
         <ProviderDialogActions>
+          {refreshing && (
+            <Button
+              disabled={state.checking}
+              // Natively disabled, it would blur out of the open dialog.
+              focusableWhenDisabled
+              onFocus={() => {
+                refreshFocused.current = true;
+              }}
+              onBlur={(event) => {
+                // Removal blurs with nowhere to go; moving on has somewhere.
+                if (event.relatedTarget) refreshFocused.current = false;
+              }}
+              onClick={() => void setup.check()}
+            >
+              Refresh
+            </Button>
+          )}
           <Button
+            ref={done}
             onClick={() =>
               state.running && !ready ? void setup.cancel() : onClose()
             }
@@ -1185,10 +1192,13 @@ export function createTabs({
       if (saving || conflicts.length || !changed || unavailable) return;
       setSaving(true);
       setError("");
-      const config = {
+      const next = {
         ...draft,
         workspace: draft.workspace.trim() || "~/.buzz",
       };
+      // A Custom agent's save drops a mark left from before, which a later
+      // blank synced model would otherwise turn back on.
+      const config = onRecommended(next) ? next : offRecommended(next);
       submitted(config);
       try {
         // This draft incorporates the current props; revise that exact snapshot.
@@ -1200,6 +1210,12 @@ export function createTabs({
         setSaving(false);
       }
     };
+    // Inert in a build that recommends nothing for Claude.
+    const following =
+      onRecommended(draft) && candidatesFor("claude-code").length > 0;
+    const found = useRecommended(following);
+    // A remote target runs Recommended on its own default.
+    const resolved = remote ? null : found;
     const effortOptions = thinkingOptions(
       effortsFor(
         draft.model || (remote ? "" : providerDefaults.model),
@@ -1298,15 +1314,18 @@ export function createTabs({
               model || providerDefaults.model,
               setupState.models,
             );
-            setDraft({
-              ...draft,
-              model,
-              effort:
-                setupState.models.length === 0 ||
-                next.some((level) => level.id === draft.effort)
-                  ? draft.effort
-                  : "",
-            });
+            // A manual choice, even of the default, is never Recommended.
+            setDraft(
+              offRecommended({
+                ...draft,
+                model,
+                effort:
+                  setupState.models.length === 0 ||
+                  next.some((level) => level.id === draft.effort)
+                    ? draft.effort
+                    : "",
+              }),
+            );
           }}
         />
         <Select
@@ -1316,7 +1335,9 @@ export function createTabs({
           variant="preference"
           value={draft.effort}
           groups={[{ label: "", options: effortOptions }]}
-          onValueChange={(effort) => setDraft({ ...draft, effort })}
+          onValueChange={(effort) =>
+            setDraft(offRecommended({ ...draft, effort }))
+          }
         />
       </>
     );
@@ -1353,9 +1374,37 @@ export function createTabs({
         {settingsSection !== "runtime" && (
           <>
             <SettingsGroup>
-              {settingsHost?.typeControl?.(configChanged)}
-              {conflict("model")}
-              {modelControl}
+              {candidatesFor("claude-code").length ? (
+                <AISettings
+                  automatic={following}
+                  harnessIcon={ClaudeLogoIcon}
+                  disabled={saving}
+                  {...runsOnDetails(
+                    { title: "Claude", icon: ClaudeLogoIcon },
+                    resolved,
+                  )}
+                  onChange={(on) =>
+                    // Manual starts from the recommendation it ran on.
+                    setDraft(
+                      on
+                        ? readConfig(withRecommended(draft))
+                        : offRecommended(
+                            followRecommended(draft, draft, resolved),
+                          ),
+                    )
+                  }
+                >
+                  {settingsHost?.typeControl?.(configChanged)}
+                  {conflict("model")}
+                  {modelControl}
+                </AISettings>
+              ) : (
+                <>
+                  {settingsHost?.typeControl?.(configChanged)}
+                  {conflict("model")}
+                  {modelControl}
+                </>
+              )}
             </SettingsGroup>
             <div className="grid gap-2">
               {conflict("instructions")}

@@ -46,7 +46,7 @@ import { manifestProcesses } from "./claude-testing";
 import { apply, inject } from "./index";
 import { type Config, DEFAULT_CONFIG } from "./runtime";
 import { ClaudeSetup } from "./setup";
-import { ClaudeAuth } from "./auth";
+import { ClaudeAuth, KEY_ONCE } from "./auth";
 import { ClaudeDefaults } from "./defaults";
 
 const desktop = vi.hoisted(() => ({ tauri: true }));
@@ -195,7 +195,11 @@ function applied({
   storage,
   channels,
   remote = false,
+  own = {},
 }: {
+  /** What `claude auth status` reports: the person's own setup, signed out
+   * unless `status` is set; it answers once `held` settles, when set. */
+  own?: { status?: object; held?: Promise<void> };
   /** Agent storage; this page's localStorage without it. */
   storage?: AgentStore;
   remote?: boolean;
@@ -261,6 +265,8 @@ function applied({
     const exited = new Promise<number | null>((resolve) => {
       if (name === "install" || streaming || args === "auth login")
         kill = () => resolve(null);
+      else if (args === "auth status --json" && own.held)
+        void own.held.then(() => resolve(0));
       else setTimeout(() => resolve(missing ? 127 : 0), 0);
     });
     queueMicrotask(() =>
@@ -273,8 +279,8 @@ function applied({
               ? "Darwin arm64\n"
               : args === "--version"
                 ? `${version} (Claude Code)\n`
-                : args === "auth login"
-                  ? "If the browser didn't open, visit: https://claude.example/oauth\n"
+                : args === "auth status --json"
+                  ? JSON.stringify(own.status ?? { loggedIn: false })
                   : "",
       ),
     );
@@ -1018,11 +1024,7 @@ it("asks for an API key and is ready once one is saved", async () => {
   render(<Setup onClose={onClose} />);
   const user = userEvent.setup();
   // The key's form takes the dialog over, saying once is enough.
-  expect(
-    await screen.findByText(
-      "Sign in with your Claude account (Pro, Max, Team or Enterprise), or create an API key at console.anthropic.com and paste it below. You only have to set this up once, and Buzz keeps the key securely on this computer.",
-    ),
-  ).toBeVisible();
+  expect(await screen.findByText(KEY_ONCE)).toBeVisible();
   expect(
     screen.queryByText("Claude 2.1.292 needs an Anthropic API key."),
   ).toBeNull();
@@ -1045,6 +1047,65 @@ it("asks for an API key and is ready once one is saved", async () => {
   expect(JSON.stringify(spawn.mock.calls)).not.toContain("sk-ant-api03-pasted");
   // The key is all the dialog edits, so saving it closes the dialog.
   expect(onClose).toHaveBeenCalledTimes(1);
+});
+
+it("refreshes to find a setup made with the Claude CLI instead of a key", async () => {
+  const own: { status?: object } = {};
+  const { type } = installed({ keySaved: false, own });
+  const Setup = providerSetup(type);
+  render(<Setup onClose={vi.fn()} />);
+  const user = userEvent.setup();
+  expect(await screen.findByText(KEY_ONCE)).toBeVisible();
+  own.status = { loggedIn: true, apiProvider: "bedrock" };
+  await user.click(screen.getByRole("button", { name: "Refresh" }));
+  await waitFor(() =>
+    expect(type.provider?.snapshot()).toEqual({ readiness: "ready" }),
+  );
+  // Ready, without naming the setup it found.
+  expect(screen.queryByText(/Bedrock/)).toBeNull();
+  expect(screen.queryByLabelText("Anthropic API key")).toBeNull();
+  expect(screen.queryByRole("button", { name: "Refresh" })).toBeNull();
+});
+
+it("keeps keyboard focus on Refresh while a held check finds no setup", async () => {
+  const own: { status?: object; held?: Promise<void> } = {};
+  const { type } = installed({ keySaved: false, own });
+  const Setup = providerSetup(type);
+  render(<Setup onClose={vi.fn()} />);
+  const user = userEvent.setup();
+  expect(await screen.findByText(KEY_ONCE)).toBeVisible();
+  let release!: () => void;
+  own.held = new Promise((resolve) => {
+    release = resolve;
+  });
+  const refresh = screen.getByRole("button", { name: "Refresh" });
+  await user.click(refresh);
+  // Natively disabled, a browser would blur it out of the dialog.
+  await waitFor(() => expect(refresh).toHaveAttribute("aria-disabled", "true"));
+  expect(refresh).not.toHaveAttribute("disabled");
+  expect(refresh).toHaveFocus();
+  release();
+  await waitFor(() =>
+    expect(refresh).toHaveAttribute("aria-disabled", "false"),
+  );
+  expect(screen.getByRole("button", { name: "Refresh" })).toHaveFocus();
+});
+
+it("keeps keyboard focus in the dialog when Refresh finds a setup", async () => {
+  const own: { status?: object } = {};
+  const { type } = installed({ keySaved: false, own });
+  const Setup = providerSetup(type);
+  render(<Setup onClose={vi.fn()} />);
+  const user = userEvent.setup();
+  expect(await screen.findByText(KEY_ONCE)).toBeVisible();
+  own.status = { loggedIn: true };
+  const refresh = screen.getByRole("button", { name: "Refresh" });
+  // Clicking focuses it, as a keyboard user's focus would be.
+  await user.click(refresh);
+  await waitFor(() =>
+    expect(screen.queryByRole("button", { name: "Refresh" })).toBeNull(),
+  );
+  expect(await screen.findByRole("button", { name: "Done" })).toHaveFocus();
 });
 
 it("closes the configuration once a replacement key is saved", async () => {
@@ -1088,11 +1149,8 @@ it("replaces generic installation copy with the latest installer state", async (
   const installedType = installed({ available: false }).type;
   const Setup = providerSetup(installedType);
   render(<Setup onClose={vi.fn()} />);
-  // After the first check, which also looks for an account.
-  await waitFor(() =>
-    expect(screen.getByRole("status")).toHaveTextContent(
-      "The Claude integration isn't installed yet.",
-    ),
+  expect(await screen.findByRole("status")).toHaveTextContent(
+    "The Claude integration isn't installed yet.",
   );
   await userEvent
     .setup()
@@ -1158,7 +1216,7 @@ it("signs in from the Settings row directly when the build has a sign-in", async
     await waitFor(() =>
       expect(type.provider?.snapshot()).toMatchObject({
         readiness: "attention",
-        attentionLabel: "Sign in to Claude",
+        attentionLabel: "Add Claude API key",
       }),
     );
     const action = type.provider?.attentionAction;
@@ -1828,11 +1886,7 @@ it("offers Set up Claude beside Harness when Claude is picked, then its models",
 
   await user.click(screen.getByRole("button", { name: "Add Claude API key" }));
   const dialog = await screen.findByRole("dialog", { name: "Set up Claude" });
-  expect(
-    within(dialog).getByText(
-      "Sign in with your Claude account (Pro, Max, Team or Enterprise), or create an API key at console.anthropic.com and paste it below. You only have to set this up once, and Buzz keeps the key securely on this computer.",
-    ),
-  ).toBeVisible();
+  expect(within(dialog).getByText(KEY_ONCE)).toBeVisible();
   expect(within(dialog).queryByRole("button", { name: "Sign in" })).toBeNull();
   await user.type(
     within(dialog).getByLabelText("Anthropic API key"),
@@ -1851,12 +1905,10 @@ it("offers Set up Claude beside Harness when Claude is picked, then its models",
   );
   expect(await screen.findByText("Claude is set up")).toBeVisible();
   await user.click(screen.getByRole("button", { name: "Manage in Settings" }));
-  // This build's auth has no key card of its own: Claude's row in Agent setup.
   expect(navigation.open).toHaveBeenCalledWith({
     version: 1,
     kind: "settings",
-    section: "agents",
-    provider: "buzz.claude-code/claude-code",
+    section: "buzz.claude-code/credentials",
   });
 });
 
@@ -1894,15 +1946,12 @@ it("offers an interactive sign-in in Set up Claude when the build has one", asyn
     );
     const user = userEvent.setup();
     const open = await screen.findByRole("button", {
-      name: "Sign in to Claude",
+      name: "Add Claude API key",
     });
     expect(open).toHaveTextContent("Sign in");
     await user.click(open);
     const dialog = await screen.findByRole("dialog", { name: "Set up Claude" });
-    const signIn = within(dialog).getByRole("button", { name: "Sign in" });
-    // Enabled once the first check, which also asks for an account, ends.
-    await waitFor(() => expect(signIn).toBeEnabled());
-    await user.click(signIn);
+    await user.click(within(dialog).getByRole("button", { name: "Sign in" }));
     await waitFor(() =>
       expect(
         screen.queryByRole("dialog", { name: "Set up Claude" }),
@@ -1910,14 +1959,14 @@ it("offers an interactive sign-in in Set up Claude when the build has one", asyn
     );
     expect(await screen.findByText("Claude is set up")).toBeVisible();
     expect(
-      screen.queryByRole("button", { name: "Sign in to Claude" }),
+      screen.queryByRole("button", { name: "Add Claude API key" }),
     ).toBeNull();
   } finally {
     interactive.signIn = false;
   }
 });
 
-it("stops a sign-in still running when Set up Claude closes, and holds the key form meanwhile", async () => {
+it("stops a sign-in still running when Set up Claude closes", async () => {
   interactive.signIn = true;
   let release = () => {};
   interactive.hold = new Promise<void>((resolve) => {
@@ -1931,21 +1980,15 @@ it("stops a sign-in still running when Set up Claude closes, and holds the key f
     render(<Action disabled={false} />);
     const user = userEvent.setup();
     await user.click(
-      await screen.findByRole("button", { name: "Sign in to Claude" }),
+      await screen.findByRole("button", { name: "Add Claude API key" }),
     );
     const dialog = await screen.findByRole("dialog", { name: "Set up Claude" });
-    const signIn = within(dialog).getByRole("button", { name: "Sign in" });
-    await waitFor(() => expect(signIn).toBeEnabled());
-    await user.click(signIn);
+    await user.click(within(dialog).getByRole("button", { name: "Sign in" }));
     await waitFor(() =>
       expect(
         within(dialog).queryByRole("button", { name: "Sign in" }),
       ).toBeNull(),
     );
-    // A key saved now would be overwritten when the sign-in ends.
-    expect(
-      within(dialog).getByRole("button", { name: "Save" }),
-    ).toHaveAttribute("aria-disabled", "true");
     expect(cancel).not.toHaveBeenCalled();
     await user.keyboard("{Escape}");
     await waitFor(() =>
@@ -1975,23 +2018,15 @@ it("restores pending sign-in controls after unmount and can cancel and retry", a
     const user = userEvent.setup();
     view = render(<Action disabled={false} />);
     await user.click(
-      await screen.findByRole("button", { name: "Sign in to Claude" }),
+      await screen.findByRole("button", { name: "Add Claude API key" }),
     );
     let dialog = await screen.findByRole("dialog", { name: "Set up Claude" });
-    const first = within(dialog).getByRole("button", { name: "Sign in" });
-    await waitFor(() => expect(first).toBeEnabled());
-    await user.click(first);
+    await user.click(within(dialog).getByRole("button", { name: "Sign in" }));
     const signIns = () =>
       spawn.mock.calls.filter(
         ([, options]) => options?.args?.slice(-2).join(" ") === "auth login",
       );
     await waitFor(() => expect(signIns()).toHaveLength(1));
-    // The link to open by hand when no browser opens.
-    await waitFor(() =>
-      expect(
-        within(dialog).getByRole("log", { name: "Setup output" }),
-      ).toHaveTextContent("https://claude.example/oauth"),
-    );
     const index = spawn.mock.calls.findIndex(
       ([, options]) => options?.args?.slice(-2).join(" ") === "auth login",
     );
@@ -2012,12 +2047,9 @@ it("restores pending sign-in controls after unmount and can cancel and retry", a
     await user.click(within(dialog).getByRole("button", { name: "Cancel" }));
     await process.exited;
     expect(kill).toHaveBeenCalledTimes(1);
-    const retry = await within(dialog).findByRole("button", {
-      name: "Sign in",
-    });
-    // Enabled once the check after the cancelled sign-in ends.
-    await waitFor(() => expect(retry).toBeEnabled());
-    await user.click(retry);
+    await user.click(
+      await within(dialog).findByRole("button", { name: "Sign in" }),
+    );
     await waitFor(() => expect(signIns()).toHaveLength(2));
     const secondIndex = spawn.mock.calls.findIndex(
       ([, options], next) =>
@@ -2093,10 +2125,9 @@ it("still asks for the key to edit an agent that runs on this computer", async (
 it.each([true, false])(
   "sends a library card to its auth setup (settings=%s)",
   async (keySettings) => {
-    // This build's auth has no key card of its own; another's may.
-    if (keySettings)
+    if (!keySettings)
       vi.spyOn(ClaudeAuth.prototype, "Settings", "get").mockReturnValue(
-        () => null,
+        undefined,
       );
     const { type, navigation } = installed({ keySaved: false });
     const Model = type.CreateModel;
@@ -2110,7 +2141,9 @@ it.each([true, false])(
         onChange={vi.fn()}
       />,
     );
-    expect(await screen.findByText(/Claude is not set up\./)).toBeVisible();
+    expect(
+      await screen.findByText(/Claude is missing an API key\./),
+    ).toBeVisible();
     expect(screen.queryByLabelText("Anthropic API key")).toBeNull();
     await userEvent
       .setup()
@@ -3048,4 +3081,61 @@ it("places separate conflict choices beside their fields and shows the competing
     },
     base: { settings: "s0", instructions: "i0" },
   });
+});
+
+it("follows the recommended setup in Settings until a manual choice", async () => {
+  // A synthetic candidate Claude lists.
+  vi.stubEnv(
+    "VITE_BUZZ_RECOMMENDED_AGENT",
+    JSON.stringify([
+      {
+        harness: "claude-code",
+        model: "sonnet",
+        effort: "high",
+        label: "Model S",
+      },
+    ]),
+  );
+  // Whether Claude offers a candidate is index.test.ts's concern.
+  vi.spyOn(ClaudeSetup.prototype, "offers").mockResolvedValue(true);
+  try {
+    const Settings = tab(installed().type, 0);
+    const save = vi.fn(async () => undefined);
+    render(
+      <Settings
+        agent={agent({ ...DEFAULT_CONFIG, preset: "recommended" } as Config)}
+        save={save}
+      />,
+    );
+    const aiSettings = screen.getByRole("combobox", { name: "AI setup" });
+    expect(aiSettings).toHaveTextContent("Automatic");
+    expect(screen.queryByText("Model S · High")).not.toBeInTheDocument();
+    const user = userEvent.setup();
+    await user.click(aiSettings);
+    expect(await screen.findByText("Model S · High")).toBeInTheDocument();
+    expect(aiSettings).toHaveAccessibleDescription(
+      "Set to Model S (recommended)",
+    );
+    await user.keyboard("{Escape}");
+    // The model rows wait for Manual.
+    const thinking = () => screen.getByRole("combobox", { name: "Thinking" });
+    expect(
+      screen.queryByRole("combobox", { name: "Thinking" }),
+    ).not.toBeInTheDocument();
+    await choose("AI setup", "Custom");
+    expect(thinking().closest("[inert]")).toBeNull();
+    // Manual starts from what Automatic ran on.
+    expect(thinking()).toHaveTextContent("High");
+    await userEvent.setup().click(screen.getByRole("button", { name: "Save" }));
+    expect(save).toHaveBeenCalledWith(
+      {
+        ...DEFAULT_CONFIG,
+        model: "sonnet",
+        effort: "high",
+      },
+      expect.anything(),
+    );
+  } finally {
+    vi.unstubAllEnvs();
+  }
 });
