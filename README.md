@@ -135,6 +135,8 @@ On a Mac, their first agent can run on the Claude subscription they already pay 
 
 Then they pick a model and choose **Create agent**. Never ask for their Claude password or sign in for them. They do not need an API key: the key box in the same window is for people who would rather pay Anthropic per use.
 
+When their first agent has answered, the setup is finished. If they are following a course, send them back to it for the next lesson, and say so as the last thing in your closing message: the course is where they add their team, with the link and the access it gives them. Do not install plugins or hire team agents from this guide.
+
 ## Keeping it running
 
 The workspace is on whenever Docker is running, and survives the computer sleeping. If the app says it cannot reach the workspace:
