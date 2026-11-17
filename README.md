@@ -354,6 +354,8 @@ Before you start, tell them plainly what this costs, what comes with them and wh
   - *Backups.* The backup commands in this guide copy the workspace on this computer. A workspace on a server has no backup command yet: until it does, they turn on their provider's own server backups.
 - **What stays behind.** The copy on this computer is not changed, so they can go back to it.
 
+The move needs the newest version of this guide's files. If their copy of the source is older than this section, do **Updating to a newer version** first.
+
 1. **Create the server and point a name at it.** Follow **Step 3 of 7 · Create the server** and **Step 4 of 7 · Point the name at the server** in the server guide below. They end with a server that has Docker on it and a DNS record for the address, such as `team.example.com`.
 2. **Back up the workspace.** Ask them to stop working in it for a few minutes, then run the command under **Backups** and note the folder it made. Anything posted after this backup stays on this computer only.
 3. **Move it.** Give the same server and address as in step 1, and the backup folder:
